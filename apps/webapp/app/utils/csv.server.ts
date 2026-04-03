@@ -485,6 +485,27 @@ export const buildCsvExportDataFromAssets = ({
             break;
           }
 
+          case "quantity":
+            value =
+              asset.type === "QUANTITY_TRACKED" && asset.quantity != null
+                ? `${asset.quantity}${
+                    asset.unitOfMeasure ? ` ${asset.unitOfMeasure}` : ""
+                  }`
+                : "";
+            break;
+          case "type":
+            // Handled by default column logic — asset.type is a direct string field
+            value =
+              asset.type === "QUANTITY_TRACKED"
+                ? "Tracked by quantity"
+                : "Individual";
+            break;
+          case "assetModel":
+            value =
+              (asset as Record<string, any>).assetModelName ??
+              (asset as Record<string, any>).assetModel?.name ??
+              "";
+            break;
           case "actions":
             value = "";
             break;

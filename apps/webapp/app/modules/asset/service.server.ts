@@ -885,7 +885,7 @@ export async function getAdvancedPaginatedAndFilterableAssets({
         ${customFieldSelect}
         ${assetQueryJoins}
         ${whereClause}
-        GROUP BY a.id, k.id, k.name, c.id, c.name, c.color, l.id, l."parentId", l.name, cu.id, tm.name, u.id, u."firstName", u."lastName", u."profilePicture", u.email, b.id, bu.id, bu."firstName", bu."lastName", bu."profilePicture", bu.email, btm.id, btm.name
+        GROUP BY a.id, k.id, k.name, c.id, c.name, c.color, l.id, l."parentId", l.name, cu.id, tm.name, u.id, u."firstName", u."lastName", u."profilePicture", u.email, b.id, bu.id, bu."firstName", bu."lastName", bu."profilePicture", bu.email, btm.id, btm.name, am.id, am.name
       ), 
       sorted_asset_query AS (
         SELECT * FROM asset_query
@@ -949,6 +949,12 @@ export async function createAsset({
   mainImageExpiration,
   barcodes,
   id: assetId, // Add support for passing an ID
+  type,
+  quantity,
+  minQuantity,
+  consumptionType,
+  unitOfMeasure,
+  assetModelId,
 }: Pick<
   Asset,
   "description" | "title" | "categoryId" | "userId" | "valuation"
@@ -965,7 +971,33 @@ export async function createAsset({
   id?: Asset["id"]; // Make ID optional
   mainImage?: Asset["mainImage"];
   mainImageExpiration?: Asset["mainImageExpiration"];
+  type?: Asset["type"];
+  quantity?: Asset["quantity"];
+  minQuantity?: Asset["minQuantity"];
+  consumptionType?: Asset["consumptionType"];
+  unitOfMeasure?: Asset["unitOfMeasure"];
+  assetModelId?: string;
 }) {
+  // Server-side validation for quantity-tracked assets
+  if (type === "QUANTITY_TRACKED") {
+    if (!quantity || quantity <= 0) {
+      throw new ShelfError({
+        cause: null,
+        message: "Quantity is required for quantity-tracked assets",
+        label,
+        status: 400,
+      });
+    }
+    if (!consumptionType) {
+      throw new ShelfError({
+        cause: null,
+        message: "Consumption type is required for quantity-tracked assets",
+        label,
+        status: 400,
+      });
+    }
+  }
+
   let attempts = 0;
   const maxAttempts = 3;
 
@@ -1028,6 +1060,11 @@ export async function createAsset({
         availableToBook,
         mainImage,
         mainImageExpiration,
+        type,
+        quantity,
+        minQuantity,
+        consumptionType,
+        unitOfMeasure,
       };
 
       /** If a kitId is passed, link the kit to the asset. */
@@ -1047,6 +1084,17 @@ export async function createAsset({
           category: {
             connect: {
               id: categoryId,
+            },
+          },
+        });
+      }
+
+      /** If an assetModelId is passed, link the asset model to the asset. */
+      if (assetModelId) {
+        Object.assign(data, {
+          assetModel: {
+            connect: {
+              id: assetModelId,
             },
           },
         });
@@ -1214,6 +1262,7 @@ export async function updateAsset({
   mainImageExpiration,
   thumbnailImage,
   categoryId,
+  assetModelId,
   tags,
   id,
   newLocationId,
@@ -1224,6 +1273,10 @@ export async function updateAsset({
   barcodes,
   organizationId,
   request,
+  quantity,
+  minQuantity,
+  consumptionType,
+  unitOfMeasure,
 }: UpdateAssetPayload) {
   try {
     const isChangingLocation = newLocationId !== currentLocationId;
@@ -1286,6 +1339,14 @@ export async function updateAsset({
       mainImage,
       mainImageExpiration,
       thumbnailImage,
+      // Quantity-tracked fields (type is immutable, never updated here)
+      // TODO(Phase 2): Route quantity changes through an audited adjustment
+      // path that writes to ConsumptionLog. Direct mutation here bypasses
+      // the full-attribution audit trail required by the PRD.
+      quantity,
+      minQuantity,
+      consumptionType,
+      unitOfMeasure,
     };
 
     /** If uncategorized is passed, disconnect the category */
@@ -1303,6 +1364,24 @@ export async function updateAsset({
         category: {
           connect: {
             id: categoryId,
+          },
+        },
+      });
+    }
+
+    /** If assetModelId is null, disconnect the asset model */
+    if (assetModelId === null) {
+      Object.assign(data, {
+        assetModel: {
+          disconnect: true,
+        },
+      });
+    } else if (assetModelId) {
+      /** If assetModelId is a valid ID, connect the asset model */
+      Object.assign(data, {
+        assetModel: {
+          connect: {
+            id: assetModelId,
           },
         },
       });
@@ -4266,12 +4345,14 @@ export async function getEntitiesWithSelectedValues({
   selectedTagIds = [],
   selectedCategoryIds = [],
   selectedLocationIds = [],
+  selectedAssetModelIds = [],
 }: {
   organizationId: Organization["id"];
   allSelectedEntries: AllowedModelNames[];
   selectedTagIds: Array<Tag["id"]>;
   selectedCategoryIds: Array<Category["id"]>;
   selectedLocationIds: Array<Location["id"]>;
+  selectedAssetModelIds?: string[];
 }) {
   const [
     // Categories
@@ -4288,6 +4369,11 @@ export async function getEntitiesWithSelectedValues({
     locationExcludedSelected,
     selectedLocations,
     totalLocations,
+
+    // Asset Models
+    assetModelExcludedSelected,
+    selectedAssetModels,
+    totalAssetModels,
   ] = await Promise.all([
     /** Categories start */
     db.category.findMany({
@@ -4345,6 +4431,18 @@ export async function getEntitiesWithSelectedValues({
     }),
     db.location.count({ where: { organizationId } }),
     /** Location end */
+
+    /** Asset Models start */
+    db.assetModel.findMany({
+      where: { organizationId, id: { notIn: selectedAssetModelIds } },
+      take: allSelectedEntries.includes("assetModel") ? undefined : 12,
+      orderBy: { updatedAt: "desc" },
+    }),
+    db.assetModel.findMany({
+      where: { organizationId, id: { in: selectedAssetModelIds } },
+    }),
+    db.assetModel.count({ where: { organizationId } }),
+    /** Asset Models end */
   ]);
 
   return {
@@ -4354,6 +4452,8 @@ export async function getEntitiesWithSelectedValues({
     totalTags,
     locations: [...selectedLocations, ...locationExcludedSelected],
     totalLocations,
+    assetModels: [...selectedAssetModels, ...assetModelExcludedSelected],
+    totalAssetModels,
   };
 }
 

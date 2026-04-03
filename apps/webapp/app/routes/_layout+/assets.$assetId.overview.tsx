@@ -1,5 +1,5 @@
 import type { RenderableTreeNode } from "@markdoc/markdoc";
-import { AssetStatus, CustomFieldType } from "@prisma/client";
+import { AssetStatus, AssetType, CustomFieldType } from "@prisma/client";
 import type {
   MetaFunction,
   ActionFunctionArgs,
@@ -10,6 +10,7 @@ import { useZorm } from "react-zorm";
 import { z } from "zod";
 import { CustodyCard } from "~/components/assets/asset-custody-card";
 import { AssetReminderCards } from "~/components/assets/asset-reminder-cards";
+import { QuantityOverviewCard } from "~/components/assets/quantity-overview-card";
 import { BarcodeCard } from "~/components/barcode/barcode-card";
 import { UnlockBarcodesBanner } from "~/components/barcode/unlock-barcodes-banner";
 import { CodePreview } from "~/components/code-preview/code-preview";
@@ -404,6 +405,30 @@ export default function AssetOverview() {
                 </li>
               ) : null}
 
+              {asset?.assetModel ? (
+                <li className="w-full border-b-[1.1px] border-b-gray-100 p-4 last:border-b-0 md:flex">
+                  <span className="w-1/4 text-[14px] font-medium text-gray-900">
+                    Asset Model
+                  </span>
+                  <div className="mt-1 text-gray-600 md:mt-0 md:w-3/5">
+                    {userHasPermission({
+                      roles,
+                      entity: PermissionEntity.assetModel,
+                      action: PermissionAction.read,
+                    }) ? (
+                      <Button
+                        to={`/settings/asset-models/${asset.assetModel.id}/edit`}
+                        variant="link-gray"
+                        className="text-gray-600 underline"
+                      >
+                        {asset.assetModel.name}
+                      </Button>
+                    ) : (
+                      <span>{asset.assetModel.name}</span>
+                    )}
+                  </div>
+                </li>
+              ) : null}
               {(() => {
                 const assetWithBarcodes = asset as AssetWithOptionalBarcodes;
                 const barcodeCount =
@@ -627,6 +652,15 @@ export default function AssetOverview() {
               currentUserId: userId,
             })}
           />
+
+          {asset?.type === AssetType.QUANTITY_TRACKED ? (
+            <QuantityOverviewCard
+              quantity={asset.quantity ?? null}
+              unitOfMeasure={asset.unitOfMeasure ?? null}
+              minQuantity={asset.minQuantity ?? null}
+              consumptionType={asset.consumptionType ?? null}
+            />
+          ) : null}
 
           {asset && (
             <CodePreview
