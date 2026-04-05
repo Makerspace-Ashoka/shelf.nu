@@ -1511,7 +1511,7 @@ export async function updateLocationAssets({
     const hasSelectedAll = assetIds.includes(ALL_SELECTED_KEY);
     if (hasSelectedAll) {
       const searchParams = getCurrentSearchParams(request);
-      const assetsWhere = getAssetsWhereInput({
+      const assetsWhere = await getAssetsWhereInput({
         organizationId,
         currentSearchParams: searchParams.toString(),
       });

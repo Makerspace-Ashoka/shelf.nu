@@ -8,6 +8,7 @@ import type {
 import _ from "lodash";
 import { z } from "zod";
 import { filterOperatorSchema } from "~/components/assets/assets-index/advanced-filters/schema";
+import { getCategoryDescendantIds } from "~/modules/category/descendants.server";
 import { getCustomFieldDisplayValue } from "~/utils/custom-fields";
 import { getParamsValues } from "~/utils/list";
 import { wrapUserLinkForNote, wrapLinkForNote } from "~/utils/markdoc-wrappers";
@@ -442,7 +443,7 @@ export const CurrentSearchParamsSchema = z.object({
   currentSearchParams: z.string().optional().nullable(),
 });
 
-export function getAssetsWhereInput({
+export async function getAssetsWhereInput({
   organizationId,
   currentSearchParams,
 }: {
@@ -478,21 +479,32 @@ export function getAssetsWhereInput({
   }
 
   if (categoriesIds && categoriesIds.length > 0) {
-    if (categoriesIds.includes("uncategorized")) {
+    const hasUncategorized = categoriesIds.includes("uncategorized");
+    const realCategoryIds = categoriesIds.filter(
+      (id) => id !== "uncategorized"
+    );
+
+    // Expand each selected category to include all its descendants
+    const expandedIds: string[] = [];
+    for (const catId of realCategoryIds) {
+      const descendants = await getCategoryDescendantIds({
+        organizationId,
+        categoryId: catId,
+        includeSelf: true,
+      });
+      expandedIds.push(...descendants);
+    }
+
+    // Deduplicate
+    const uniqueIds = [...new Set(expandedIds)];
+
+    if (hasUncategorized) {
       where.OR = [
-        {
-          categoryId: {
-            in: categoriesIds,
-          },
-        },
-        {
-          categoryId: null,
-        },
+        ...(uniqueIds.length > 0 ? [{ categoryId: { in: uniqueIds } }] : []),
+        { categoryId: null },
       ];
-    } else {
-      where.categoryId = {
-        in: categoriesIds,
-      };
+    } else if (uniqueIds.length > 0) {
+      where.categoryId = { in: uniqueIds };
     }
   }
 

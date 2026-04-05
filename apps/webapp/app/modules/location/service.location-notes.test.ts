@@ -49,7 +49,7 @@ vi.mock("~/modules/user/service.server", () => ({
 }));
 
 vi.mock("~/modules/asset/utils.server", () => ({
-  getAssetsWhereInput: vi.fn(() => ({})),
+  getAssetsWhereInput: vi.fn().mockResolvedValue({}),
   getLocationUpdateNoteContent: vi.fn(() => "asset note"),
   getKitLocationUpdateNoteContent: vi.fn(() => "kit asset note"),
 }));
