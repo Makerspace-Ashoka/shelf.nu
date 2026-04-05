@@ -14,17 +14,18 @@
  */
 
 import type React from "react";
-import type { ConsumptionType } from "@prisma/client";
+import type { ConsumptionType, UnitOfMeasure } from "@prisma/client";
 import { Badge } from "~/components/shared/badge";
 import { Card } from "~/components/shared/card";
 import { tw } from "~/utils/tw";
+import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
 
 /** Props for the QuantityOverviewCard component */
 export interface QuantityOverviewCardProps {
   /** Total quantity of the asset */
   quantity: number | null;
-  /** Unit of measure label (e.g., "pcs", "boxes", "liters") */
-  unitOfMeasure: string | null;
+  /** Unit of measure enum value */
+  unitOfMeasure: UnitOfMeasure | null;
   /** Low-stock alert threshold; when quantity <= minQuantity, a warning badge appears */
   minQuantity: number | null;
   /** Consumption behavior: ONE_WAY (used up) or TWO_WAY (returnable) */
@@ -83,7 +84,7 @@ export function QuantityOverviewCard({
   className,
 }: QuantityOverviewCardProps) {
   const qty = quantity ?? 0;
-  const unit = unitOfMeasure || null;
+  const unit = unitOfMeasure ? unitOfMeasureLabel(unitOfMeasure) : null;
 
   /** Low stock when a threshold is set and current quantity is at or below it */
   const isLowStock =

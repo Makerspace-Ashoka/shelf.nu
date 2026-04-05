@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from "react";
 import type { RenderableTreeNode } from "@markdoc/markdoc";
-import type { AssetStatus } from "@prisma/client";
+import type { AssetStatus, UnitOfMeasure } from "@prisma/client";
 import { AssetType, CustomFieldType } from "@prisma/client";
 import { HoverCardPortal } from "@radix-ui/react-hover-card";
 import {
@@ -60,6 +60,7 @@ import {
 } from "~/utils/permissions/permission.data";
 import { userHasPermission } from "~/utils/permissions/permission.validator.client";
 import { tw } from "~/utils/tw";
+import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
 import { resolveUserDisplayName } from "~/utils/user";
 import AssetQuickActions from "./asset-quick-actions";
 import { freezeColumnClassNames } from "./freeze-column-classes";
@@ -348,7 +349,9 @@ export function AdvancedIndexColumn({
         <Td className="w-full max-w-none whitespace-nowrap">
           {item.type === AssetType.QUANTITY_TRACKED && item.quantity != null ? (
             `${item.quantity}${
-              item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""
+              item.unitOfMeasure
+                ? ` ${unitOfMeasureLabel(item.unitOfMeasure as UnitOfMeasure)}`
+                : ""
             }`
           ) : (
             <EmptyTableValue />

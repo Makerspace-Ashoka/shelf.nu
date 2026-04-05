@@ -24,7 +24,7 @@ describe("NewAssetFormSchema", () => {
       quantity: "100",
       minQuantity: "10",
       consumptionType: "ONE_WAY",
-      unitOfMeasure: "pcs",
+      unitOfMeasure: "PCS",
     });
 
     expect(result.success).toBe(true);
@@ -33,7 +33,7 @@ describe("NewAssetFormSchema", () => {
       expect(result.data.quantity).toBe(100);
       expect(result.data.minQuantity).toBe(10);
       expect(result.data.consumptionType).toBe("ONE_WAY");
-      expect(result.data.unitOfMeasure).toBe("pcs");
+      expect(result.data.unitOfMeasure).toBe("PCS");
     }
   });
 

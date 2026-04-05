@@ -203,7 +203,7 @@ model Asset {
   quantity        Int? // Total quantity at this location
   minQuantity     Int? // Low-stock alert threshold
   consumptionType ConsumptionType? // How consumption is tracked
-  unitOfMeasure   String? // e.g., "pcs", "boxes", "liters"
+  unitOfMeasure   UnitOfMeasure? // Discrete unit for quantity tracking
 
   // Datetime
   createdAt DateTime @default(now())
@@ -269,6 +269,25 @@ enum AssetType {
 enum ConsumptionType {
   ONE_WAY // Checked out and consumed. No return expected.
   TWO_WAY // Checked out and returned, with consumption report.
+}
+
+/** Discrete units of measure for quantity-tracked assets. */
+enum UnitOfMeasure {
+  // Number / count
+  PCS // Pieces
+
+  // Weight
+  MG // Milligrams
+  G // Grams
+  KG // Kilograms
+
+  // Length
+  MM // Millimeters
+  M // Meters
+
+  // Volume
+  ML // Milliliters
+  L // Liters
 }
 
 /** Classifies the type of quantity change in a ConsumptionLog entry. */

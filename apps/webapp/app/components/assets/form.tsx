@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import type { Asset, Barcode, Qr } from "@prisma/client";
-import { AssetType, ConsumptionType } from "@prisma/client";
+import { AssetType, ConsumptionType, UnitOfMeasure } from "@prisma/client";
 import {
   Popover,
   PopoverTrigger,
@@ -103,7 +103,11 @@ export const NewAssetFormSchema = z.object({
       errorMap: () => ({ message: "Please select a consumption type" }),
     })
     .optional(),
-  unitOfMeasure: z.string().optional(),
+  unitOfMeasure: z
+    .nativeEnum(UnitOfMeasure, {
+      errorMap: () => ({ message: "Please select a unit of measure" }),
+    })
+    .optional(),
 });
 
 /** Pass props of the values to be used as default for the form fields */
@@ -405,17 +409,32 @@ export const AssetForm = ({
             <FormRow
               rowLabel="Unit of measure"
               className="border-b-0 pb-[10px]"
-              subHeading="Label for the unit (e.g. pcs, boxes, liters)."
+              subHeading="Select the unit for tracking quantity."
             >
-              <Input
-                label="Unit of measure"
-                hideLabel
+              <select
                 name="unitOfMeasure"
                 disabled={disabled}
-                className="w-full"
-                placeholder="e.g., pcs, boxes, liters"
                 defaultValue={unitOfMeasure ?? ""}
-              />
+                className="w-full rounded border border-gray-300 px-3 py-2 text-[14px] text-gray-700 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50"
+              >
+                <option value="">Select unit...</option>
+                <optgroup label="Number">
+                  <option value="PCS">Pieces (pcs)</option>
+                </optgroup>
+                <optgroup label="Weight">
+                  <option value="MG">Milligrams (mg)</option>
+                  <option value="G">Grams (g)</option>
+                  <option value="KG">Kilograms (kg)</option>
+                </optgroup>
+                <optgroup label="Length">
+                  <option value="MM">Millimeters (mm)</option>
+                  <option value="M">Meters (m)</option>
+                </optgroup>
+                <optgroup label="Volume">
+                  <option value="ML">Milliliters (ml)</option>
+                  <option value="L">Liters (L)</option>
+                </optgroup>
+              </select>
             </FormRow>
 
             <FormRow

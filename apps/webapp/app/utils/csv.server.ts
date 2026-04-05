@@ -7,6 +7,7 @@ import type {
   Tag,
   TeamMember,
 } from "@prisma/client";
+import type { UnitOfMeasure } from "@prisma/client";
 import { CustomFieldType } from "@prisma/client";
 import {
   MaxFileSizeExceededError,
@@ -41,6 +42,7 @@ import {
   getBookingsFilterData,
 } from "~/modules/booking/service.server";
 import type { BookingWithCustodians } from "~/modules/booking/types";
+import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
 import { checkExhaustiveSwitch } from "./check-exhaustive-switch";
 import { getDateTimeFormat } from "./client-hints";
 import { getAdvancedFiltersFromRequest } from "./cookies.server";
@@ -489,7 +491,11 @@ export const buildCsvExportDataFromAssets = ({
             value =
               asset.type === "QUANTITY_TRACKED" && asset.quantity != null
                 ? `${asset.quantity}${
-                    asset.unitOfMeasure ? ` ${asset.unitOfMeasure}` : ""
+                    asset.unitOfMeasure
+                      ? ` ${unitOfMeasureLabel(
+                          asset.unitOfMeasure as UnitOfMeasure
+                        )}`
+                      : ""
                   }`
                 : "";
             break;

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import type { UnitOfMeasure } from "@prisma/client";
 import { motion } from "framer-motion";
 import { Package } from "lucide-react";
 import { useFetcher, useFetchers, useLoaderData } from "react-router";
@@ -29,6 +30,7 @@ import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import type { AssetsFromViewItem } from "~/modules/asset/types";
 import type { AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import { tw } from "~/utils/tw";
+import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
 import { AssetImage } from "../asset-image";
 import { AssetStatusBadge } from "../asset-status-badge";
 import BulkActionsDropdown from "../bulk-actions-dropdown";
@@ -315,7 +317,9 @@ export const ListAssetContent = ({
         {item.type === "QUANTITY_TRACKED" && item.quantity != null ? (
           <span>
             {item.quantity}
-            {item.unitOfMeasure ? ` ${item.unitOfMeasure}` : ""}
+            {item.unitOfMeasure
+              ? ` ${unitOfMeasureLabel(item.unitOfMeasure as UnitOfMeasure)}`
+              : ""}
           </span>
         ) : (
           <EmptyTableValue />
