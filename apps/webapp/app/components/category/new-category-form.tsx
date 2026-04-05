@@ -9,6 +9,7 @@ import { getRandomColor } from "~/utils/get-random-color";
 import { getValidationErrors } from "~/utils/http";
 import { tw } from "~/utils/tw";
 import { zodFieldIsRequired } from "~/utils/zod";
+import DynamicSelect from "../dynamic-select/dynamic-select";
 import { ColorInput } from "../forms/color-input";
 import Input from "../forms/input";
 import { Button } from "../shared/button";
@@ -18,6 +19,10 @@ export const NewCategoryFormSchema = z.object({
   description: z.string(),
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   preventRedirect: z.string().optional(),
+  parentId: z
+    .string()
+    .optional()
+    .transform((value) => (value ? value : null)),
 });
 
 type NewCategoryFormProps = {
@@ -30,6 +35,10 @@ type NewCategoryFormProps = {
   onCancel?: () => void;
   /** Callback function triggered on successful category creation */
   onSuccess?: (data?: { category?: Category }) => void;
+  /** Default value for the parent category selector */
+  parentId?: string | null;
+  /** Category ID to exclude from the parent selector (prevents self-parenting in edit mode) */
+  excludeId?: string;
 };
 
 export default function NewCategoryForm({
@@ -40,6 +49,8 @@ export default function NewCategoryForm({
   apiUrl,
   onCancel,
   onSuccess,
+  parentId,
+  excludeId,
 }: NewCategoryFormProps) {
   const zo = useZorm("NewQuestionWizardScreen", NewCategoryFormSchema);
   const fetcher = useFetcherWithReset<typeof action>();
@@ -117,6 +128,25 @@ export default function NewCategoryForm({
             hideErrorText={!hasOnSuccessFunc}
             colorFromServer={color}
             required={zodFieldIsRequired(NewCategoryFormSchema.shape.color)}
+          />
+        </div>
+
+        {/* Parent category selector — allows nesting categories in a hierarchy */}
+        <div className={tw("mb-4 lg:mb-0", inputClassName)}>
+          <DynamicSelect
+            disabled={disabled}
+            model={{ name: "category", queryKey: "name" }}
+            fieldName="parentId"
+            contentLabel="Categories"
+            label="Parent category"
+            initialDataKey="categories"
+            countKey="totalCategories"
+            placeholder="No parent"
+            closeOnSelect
+            selectionMode="set"
+            allowClear={true}
+            defaultValue={parentId ?? undefined}
+            excludeItems={excludeId ? [excludeId] : undefined}
           />
         </div>
 
