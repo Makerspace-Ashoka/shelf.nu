@@ -190,15 +190,31 @@ export default function CategoriesPage() {
   );
 }
 
-const CategoryItem = ({
-  item,
-}: {
-  item: Pick<Category, "id" | "description" | "name" | "color"> & {
-    _count: {
-      assets: number;
-    };
+/**
+ * Shape of a single category row as returned by `getCategories` (which uses
+ * `CATEGORY_LIST_INCLUDE`). Includes asset + children counts and optional
+ * parent identity for hierarchy display.
+ */
+type CategoryListItem = Pick<
+  Category,
+  "id" | "description" | "name" | "color"
+> & {
+  _count: {
+    assets: number;
+    /** Number of direct child categories — shown in the list for hierarchy context. */
+    children: number;
   };
-}) => (
+  /** Parent category identity, present when this is a sub-category. */
+  parent: { id: string; name: string } | null;
+};
+
+/**
+ * Renders a single row in the categories list table.
+ *
+ * Shows the category badge, description, asset count, hierarchy metadata
+ * (parent name and subcategory count), and quick-action controls.
+ */
+const CategoryItem = ({ item }: { item: CategoryListItem }) => (
   <>
     <Td title={`Category: ${item.name}`} className="w-1/4">
       <Badge color={item.color} withDot={false}>
@@ -214,6 +230,18 @@ const CategoryItem = ({
           charactersPerLine={60}
         />
       ) : null}
+      {/* Hierarchy metadata — show parent and children count when present */}
+      {item.parent && (
+        <span className="text-[12px] text-gray-600">
+          Parent: {item.parent.name}
+        </span>
+      )}
+      {item._count?.children > 0 && (
+        <span className="text-[12px] text-gray-600">
+          {item._count.children}{" "}
+          {item._count.children === 1 ? "subcategory" : "subcategories"}
+        </span>
+      )}
     </Td>
     <Td>{item._count.assets}</Td>
     <Td>
