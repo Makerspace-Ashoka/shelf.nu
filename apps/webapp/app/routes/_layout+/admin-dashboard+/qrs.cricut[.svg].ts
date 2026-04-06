@@ -28,8 +28,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     await requireAdmin(userId);
     const url = new URL(request.url);
     const amount = Number(url.searchParams.get("amount")) || 10;
-    const batchName =
-      (url.searchParams.get("batchName") as string) || "cricut-batch";
+    const batchLabel = url.searchParams.get("batchName") || "cricut";
+    const batchName = `${batchLabel}-${Date.now()}`;
     const style = (url.searchParams.get("style") || "square") as QrStyle;
     const sizeMm = Number(url.searchParams.get("sizeMm")) || 25;
     const gapMm = Number(url.searchParams.get("gapMm")) || 1;
