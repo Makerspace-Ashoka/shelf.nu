@@ -21,6 +21,7 @@ import { z } from "zod";
 import { updateDynamicTitleAtom } from "~/atoms/dynamic-title-atom";
 import { fileErrorAtom, assetImageValidateFileAtom } from "~/atoms/file";
 import { HierarchicalCategorySelect } from "~/components/category/hierarchical-category-select";
+import { HierarchicalLocationSelect } from "~/components/location/hierarchical-location-select";
 import type {
   AssetEditLoaderData,
   loader,
@@ -758,48 +759,20 @@ export const AssetForm = ({
               </HoverCardContent>
             </HoverCard>
           ) : (
-            <DynamicSelect
+            <HierarchicalLocationSelect
               disabled={disabled}
-              selectionMode="set"
-              fieldName="newLocationId"
-              triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
               defaultValue={locationId || undefined}
-              model={{ name: "location", queryKey: "name" }}
-              contentLabel="Locations"
-              label="Location"
-              hideLabel
-              initialDataKey="locations"
-              countKey="totalLocations"
-              closeOnSelect
-              allowClear
-              extraContent={({ onItemCreated, closePopover }) => (
+              fieldName="newLocationId"
+              extraContent={({ closePopover }) => (
                 <InlineEntityCreationDialog
                   type="location"
                   title="Create new location"
                   buttonLabel="Create new location"
                   onCreated={(created) => {
                     if (created?.type !== "location") return;
-                    const location = created.entity;
-                    onItemCreated({
-                      id: location.id,
-                      name: location.name,
-                      metadata: { ...location },
-                    });
                     closePopover();
                   }}
                 />
-              )}
-              renderItem={({ name, metadata }) => (
-                <div className="flex items-center gap-2">
-                  {metadata?.thumbnailUrl ? (
-                    <ImageWithPreview
-                      thumbnailUrl={metadata.thumbnailUrl}
-                      alt={metadata.name}
-                      className="size-6 rounded-[2px]"
-                    />
-                  ) : null}
-                  <div>{name}</div>
-                </div>
               )}
             />
           )}
