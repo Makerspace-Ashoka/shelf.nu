@@ -20,6 +20,7 @@ import { useZorm } from "react-zorm";
 import { z } from "zod";
 import { updateDynamicTitleAtom } from "~/atoms/dynamic-title-atom";
 import { fileErrorAtom, assetImageValidateFileAtom } from "~/atoms/file";
+import { HierarchicalCategorySelect } from "~/components/category/hierarchical-category-select";
 import type {
   AssetEditLoaderData,
   loader,
@@ -656,37 +657,20 @@ export const AssetForm = ({
           }
           className="border-b-0 pb-[10px]"
         >
-          <DynamicSelect
+          <HierarchicalCategorySelect
             disabled={disabled}
             defaultValue={
               new URLSearchParams(location.search).get("category") ||
               categoryId ||
               undefined
             }
-            model={{ name: "category", queryKey: "name" }}
-            triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
-            contentLabel="Categories"
-            label="Category"
-            hideLabel
-            initialDataKey="categories"
-            countKey="totalCategories"
-            closeOnSelect
-            selectionMode="set"
-            allowClear={true}
-            extraContent={({ onItemCreated, closePopover }) => (
+            extraContent={({ currentParentId, closePopover }) => (
               <InlineEntityCreationDialog
                 title="Create new category"
                 type="category"
                 buttonLabel="Create new category"
                 onCreated={(created) => {
                   if (created?.type !== "category") return;
-                  const category = created.entity;
-                  onItemCreated({
-                    id: category.id,
-                    name: category.name,
-                    color: category.color,
-                    metadata: { ...category },
-                  });
                   closePopover();
                 }}
               />
