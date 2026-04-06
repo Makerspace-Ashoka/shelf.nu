@@ -232,9 +232,20 @@ export const AssetForm = ({
   const [, validateFile] = useAtom(assetImageValidateFileAtom);
   const [, updateDynamicTitle] = useAtom(updateDynamicTitleAtom);
 
-  const { currency, asset } = useLoaderData<AssetEditLoaderData>();
+  const loaderData = useLoaderData<AssetEditLoaderData>();
+  const { currency, asset } = loaderData;
   const isKitAsset = Boolean(asset?.kit);
   const locationDisabled = disabled || isKitAsset;
+
+  /** Look up the selected category's name/color from loader data. */
+  const selectedCategory = (loaderData as any)?.categories?.find?.(
+    (c: { id: string }) => c.id === categoryId
+  ) as { id: string; name: string; color: string } | undefined;
+
+  /** Look up the selected location's name from loader data. */
+  const selectedLocation = (loaderData as any)?.locations?.find?.(
+    (l: { id: string }) => l.id === locationId
+  ) as { id: string; name: string } | undefined;
 
   /** Whether we are in edit mode (asset already exists). */
   const isEditMode = Boolean(id);
@@ -664,16 +675,21 @@ export const AssetForm = ({
               categoryId ||
               undefined
             }
-            extraContent={({
-              currentParentId: _currentParentId,
-              closePopover,
-            }) => (
+            defaultValueName={selectedCategory?.name}
+            defaultValueColor={selectedCategory?.color}
+            extraContent={({ closePopover, selectItem }) => (
               <InlineEntityCreationDialog
                 title="Create new category"
                 type="category"
                 buttonLabel="Create new category"
                 onCreated={(created) => {
                   if (created?.type !== "category") return;
+                  const cat = created.entity as {
+                    id: string;
+                    name: string;
+                    color: string;
+                  };
+                  selectItem(cat.id, cat.name, cat.color);
                   closePopover();
                 }}
               />
@@ -761,14 +777,20 @@ export const AssetForm = ({
             <HierarchicalLocationSelect
               disabled={disabled}
               defaultValue={locationId || undefined}
+              defaultValueName={selectedLocation?.name}
               fieldName="newLocationId"
-              extraContent={({ closePopover }) => (
+              extraContent={({ closePopover, selectItem }) => (
                 <InlineEntityCreationDialog
                   type="location"
                   title="Create new location"
                   buttonLabel="Create new location"
                   onCreated={(created) => {
                     if (created?.type !== "location") return;
+                    const loc = created.entity as {
+                      id: string;
+                      name: string;
+                    };
+                    selectItem(loc.id, loc.name);
                     closePopover();
                   }}
                 />

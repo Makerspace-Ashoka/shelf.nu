@@ -45,6 +45,8 @@ type Breadcrumb = { id: string; name: string };
 export type HierarchicalSelectHelpers = {
   currentParentId: string | null;
   closePopover: () => void;
+  /** Select an item programmatically (e.g. after inline creation). */
+  selectItem: (id: string, name: string, color?: string) => void;
 };
 
 /** Props for {@link HierarchicalSelect}. */
@@ -180,7 +182,11 @@ export function HierarchicalSelect({
 
   const extraContentNode =
     typeof extraContent === "function"
-      ? extraContent({ currentParentId, closePopover: () => setOpen(false) })
+      ? extraContent({
+          currentParentId,
+          closePopover: () => setOpen(false),
+          selectItem,
+        })
       : extraContent;
 
   // ── Render ──────────────────────────────────────────────────────────────
