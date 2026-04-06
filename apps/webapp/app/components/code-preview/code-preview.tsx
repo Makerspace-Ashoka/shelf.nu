@@ -8,6 +8,7 @@ import { BarcodeDisplay } from "~/components/barcode/barcode-display";
 import { Button } from "~/components/shared/button";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import type { QrStyle } from "~/modules/qr/types";
 import { resolveShowShelfBranding } from "~/utils/branding";
 import { useBarcodePermissions } from "~/utils/permissions/use-barcode-permissions";
 import { slugify } from "~/utils/slugify";
@@ -385,6 +386,10 @@ interface QrLabelProps {
   qrIdDisplayPreference?: string;
   sequentialId?: string | null;
   showShelfBranding?: boolean;
+  /** Frame style: square (default) or circular. */
+  qrStyle?: QrStyle;
+  /** Output size in pixels. Defaults to 300. */
+  sizePx?: number;
 }
 
 export const QrLabel = React.forwardRef<HTMLDivElement, QrLabelProps>(
@@ -395,21 +400,24 @@ export const QrLabel = React.forwardRef<HTMLDivElement, QrLabelProps>(
       qrIdDisplayPreference,
       sequentialId,
       showShelfBranding = true,
+      qrStyle = "square",
+      sizePx = 300,
     } = props ?? {};
     return (
       <div
         style={{
-          width: "300px",
+          width: `${sizePx}px`,
           aspectRatio: 1 / 1,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "column",
           gap: "12px",
-          borderRadius: "4px",
+          borderRadius: qrStyle === "circular" ? "50%" : "4px",
           border: "5px solid #E3E4E8",
           padding: "24px 17px 24px 17px",
           backgroundColor: "white",
+          overflow: "hidden",
         }}
         ref={ref}
       >
