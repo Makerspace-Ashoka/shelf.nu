@@ -83,4 +83,31 @@ describe("createSSOFormData", () => {
       expect(groups).toEqual([]);
     });
   });
+
+  it("populates all name, token, and contact fields", () => {
+    const session = makeSession({
+      firstname: "Eve",
+      lastName: "Park",
+      groups: [],
+      mobilephone: "+1234567890",
+      streetAddress: "123 Main St",
+      city: "Springfield",
+      stateProvince: "IL",
+      postalCode: "62701",
+      country: "US",
+    });
+
+    const formData = createSSOFormData(session, "my-refresh", "/dashboard");
+
+    expect(formData.get("firstName")).toBe("Eve");
+    expect(formData.get("lastName")).toBe("Park");
+    expect(formData.get("refreshToken")).toBe("my-refresh");
+    expect(formData.get("redirectTo")).toBe("/dashboard");
+    expect(formData.get("phone")).toBe("+1234567890");
+    expect(formData.get("streetAddress")).toBe("123 Main St");
+    expect(formData.get("city")).toBe("Springfield");
+    expect(formData.get("stateProvince")).toBe("IL");
+    expect(formData.get("postalCode")).toBe("62701");
+    expect(formData.get("country")).toBe("US");
+  });
 });
