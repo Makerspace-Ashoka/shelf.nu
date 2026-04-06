@@ -268,7 +268,38 @@ function generateQrSvgInner({
   return generateSquareSvgInner(qr, moduleCount, sizePx, offsetX, offsetY);
 }
 
-/** Square QR content at an offset position (no <svg> wrapper). */
+/**
+ * Builds a compound SVG path string from all dark QR modules.
+ * Merges all modules into a single <path d="..."> element,
+ * reducing hundreds of <rect> nodes to 1 path node.
+ * Critical for Cricut Design Space which chokes on high node counts.
+ */
+function buildCompoundQrPath(
+  qr: ReturnType<typeof QRCode>,
+  moduleCount: number,
+  cellSize: number,
+  originX: number,
+  originY: number
+): string {
+  const segments: string[] = [];
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        const x = (originX + col * cellSize).toFixed(2);
+        const y = (originY + row * cellSize).toFixed(2);
+        const w = cellSize.toFixed(2);
+        // Each module as a closed rect subpath: M x,y h w v w h -w Z
+        segments.push(`M${x},${y}h${w}v${w}h-${w}Z`);
+      }
+    }
+  }
+  return segments.join("");
+}
+
+/**
+ * Square QR content at an offset position (no <svg> wrapper).
+ * Uses compound path (2 nodes per sticker: background + QR path).
+ */
 function generateSquareSvgInner(
   qr: ReturnType<typeof QRCode>,
   moduleCount: number,
@@ -280,28 +311,23 @@ function generateSquareSvgInner(
   const qrArea = sizePx - qrMargin * 2;
   const cellSize = qrArea / moduleCount;
 
-  const parts: string[] = [];
-  // Background
-  parts.push(
-    `    <rect x="${offsetX}" y="${offsetY}" width="${sizePx}" height="${sizePx}" fill="white" stroke="black" stroke-width="0.5"/>`
+  const bg = `    <rect x="${offsetX}" y="${offsetY}" width="${sizePx}" height="${sizePx}" fill="white" stroke="black" stroke-width="0.5"/>`;
+  const qrPath = buildCompoundQrPath(
+    qr,
+    moduleCount,
+    cellSize,
+    offsetX + qrMargin,
+    offsetY + qrMargin
   );
-  // QR modules
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (qr.isDark(row, col)) {
-        const x = (offsetX + qrMargin + col * cellSize).toFixed(2);
-        const y = (offsetY + qrMargin + row * cellSize).toFixed(2);
-        const w = cellSize.toFixed(2);
-        parts.push(
-          `    <rect x="${x}" y="${y}" width="${w}" height="${w}" fill="black"/>`
-        );
-      }
-    }
-  }
-  return parts.join("\n");
+  const path = `    <path d="${qrPath}" fill="black"/>`;
+
+  return `${bg}\n${path}`;
 }
 
-/** Circular QR content at an offset position (no <svg> wrapper). */
+/**
+ * Circular QR content at an offset position (no <svg> wrapper).
+ * Uses compound path (2 nodes per sticker: circle + QR path).
+ */
 function generateCircularSvgInner(
   qr: ReturnType<typeof QRCode>,
   moduleCount: number,
@@ -314,26 +340,18 @@ function generateCircularSvgInner(
   const centerY = offsetY + sizePx / 2;
   const qrSide = (sizePx / Math.SQRT2) * 0.88;
   const cellSize = qrSide / moduleCount;
-  const qrOffsetX = offsetX + (sizePx - qrSide) / 2;
-  const qrOffsetY = offsetY + (sizePx - qrSide) / 2;
+  const qrOriginX = offsetX + (sizePx - qrSide) / 2;
+  const qrOriginY = offsetY + (sizePx - qrSide) / 2;
 
-  const parts: string[] = [];
-  // Circle background
-  parts.push(
-    `    <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="white" stroke="black" stroke-width="0.5"/>`
+  const bg = `    <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="white" stroke="black" stroke-width="0.5"/>`;
+  const qrPath = buildCompoundQrPath(
+    qr,
+    moduleCount,
+    cellSize,
+    qrOriginX,
+    qrOriginY
   );
-  // QR modules
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (qr.isDark(row, col)) {
-        const x = (qrOffsetX + col * cellSize).toFixed(2);
-        const y = (qrOffsetY + row * cellSize).toFixed(2);
-        const w = cellSize.toFixed(2);
-        parts.push(
-          `    <rect x="${x}" y="${y}" width="${w}" height="${w}" fill="black"/>`
-        );
-      }
-    }
-  }
-  return parts.join("\n");
+  const path = `    <path d="${qrPath}" fill="black"/>`;
+
+  return `${bg}\n${path}`;
 }
