@@ -12,7 +12,7 @@
 export type QrStyle = "square" | "circular";
 
 /** Predefined size options for QR code output. */
-export type QrSizePreset = "small" | "medium" | "large" | "custom";
+export type QrSizePreset = "mini" | "small" | "medium" | "large" | "custom";
 
 /** Configuration for QR code download/export. */
 export interface QrDownloadOptions {
@@ -26,6 +26,7 @@ export interface QrDownloadOptions {
 
 /** Size definitions mapping preset names to mm and px values. */
 export const QR_SIZE_PRESETS = {
+  mini: { mm: 10, label: "Mini (10mm)", px: 118 },
   small: { mm: 25, label: "Small (25mm)", px: 295 },
   medium: { mm: 50, label: "Medium (50mm)", px: 591 },
   large: { mm: 75, label: "Large (75mm)", px: 886 },
