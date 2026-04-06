@@ -11,11 +11,10 @@
 
 import type { ChangeEvent } from "react";
 import { useMemo, useState } from "react";
-import { useNavigation } from "react-router";
+import { useDisabled } from "~/hooks/use-disabled";
 import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
 import { calculateMatCapacity, CRICUT_MAT } from "~/modules/qr/types";
 import { QR_SIZE_PRESETS } from "~/modules/qr/types";
-import { isFormProcessing } from "~/utils/form";
 import Input from "../forms/input";
 import { QrStyleToggle } from "../qr/qr-style-toggle";
 import { Button } from "../shared/button";
@@ -26,14 +25,13 @@ import { Button } from "../shared/button";
  * Renders a form that lets admins configure and download a single merged SVG
  * file containing QR codes packed edge-to-edge for Cricut cutting.
  */
-export const GenerateCricutSheet = () => {
+export function GenerateCricutSheet() {
   const [batchName, setBatchName] = useState<string>("");
   const [qrStyle, setQrStyle] = useState<QrStyle>("square");
   const [sizePreset, setSizePreset] = useState<QrSizePreset>("small");
   const [customSizeMm, setCustomSizeMm] = useState<number>(25);
   const [gapMm, setGapMm] = useState<number>(1);
-  const navigation = useNavigation();
-  const disabled = isFormProcessing(navigation.state);
+  const disabled = useDisabled();
 
   const sizeMm =
     sizePreset === "custom" ? customSizeMm : QR_SIZE_PRESETS[sizePreset].mm;
@@ -169,4 +167,4 @@ export const GenerateCricutSheet = () => {
       </div>
     </div>
   );
-};
+}

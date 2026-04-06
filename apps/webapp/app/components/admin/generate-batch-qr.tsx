@@ -1,21 +1,19 @@
 import type { ChangeEvent } from "react";
 import { useState } from "react";
-import { useNavigation } from "react-router";
+import { useDisabled } from "~/hooks/use-disabled";
 import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
 import { QR_SIZE_PRESETS } from "~/modules/qr/types";
-import { isFormProcessing } from "~/utils/form";
 import Input from "../forms/input";
 import { QrStyleToggle } from "../qr/qr-style-toggle";
 import { Button } from "../shared/button";
 
-export const GenerateBatchQr = () => {
+export function GenerateBatchQr() {
   const [amount, setAmount] = useState<number>(1000);
   const [batchName, setBatchName] = useState<string>("");
   const [qrStyle, setQrStyle] = useState<QrStyle>("square");
   const [sizePreset, setSizePreset] = useState<QrSizePreset>("medium");
   const [customSizeMm, setCustomSizeMm] = useState<number>(50);
-  const navigation = useNavigation();
-  const disabled = isFormProcessing(navigation.state);
+  const disabled = useDisabled();
 
   function handleChange(e: ChangeEvent<HTMLInputElement>) {
     const value = Number(e.target.value);
@@ -128,4 +126,4 @@ export const GenerateBatchQr = () => {
       </div>
     </div>
   );
-};
+}
