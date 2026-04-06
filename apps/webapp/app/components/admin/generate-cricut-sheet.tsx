@@ -13,46 +13,12 @@ import type { ChangeEvent } from "react";
 import { useMemo, useState } from "react";
 import { useNavigation } from "react-router";
 import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
+import { calculateMatCapacity, CRICUT_MAT } from "~/modules/qr/types";
 import { QR_SIZE_PRESETS } from "~/modules/qr/types";
 import { isFormProcessing } from "~/utils/form";
 import Input from "../forms/input";
 import { QrStyleToggle } from "../qr/qr-style-toggle";
 import { Button } from "../shared/button";
-
-/** Cricut Print Then Cut mat dimensions in mm. */
-const MAT_WIDTH_MM = 150;
-const MAT_HEIGHT_MM = 250;
-
-/**
- * Client-side capacity calculation matching the server-side logic.
- * Determines how many stickers fit on the Cricut mat.
- */
-function calculateCapacity(stickerMm: number, gapMm: number) {
-  // First sticker takes stickerMm, each additional takes stickerMm + gapMm
-  const cols = Math.max(
-    1,
-    Math.floor((MAT_WIDTH_MM - stickerMm) / (stickerMm + gapMm)) + 1
-  );
-  let rows = Math.max(
-    1,
-    Math.floor((MAT_HEIGHT_MM - stickerMm) / (stickerMm + gapMm)) + 1
-  );
-
-  // When Cricut scales width to fill the mat, height scales proportionally.
-  // Reduce rows if the scaled height would exceed the mat.
-  const contentW = cols * stickerMm + (cols - 1) * gapMm;
-  const scale = MAT_WIDTH_MM / contentW;
-  const contentH = rows * stickerMm + (rows - 1) * gapMm;
-  if (contentH * scale > MAT_HEIGHT_MM) {
-    const maxContentH = MAT_HEIGHT_MM / scale;
-    rows = Math.max(
-      1,
-      Math.floor((maxContentH - stickerMm) / (stickerMm + gapMm)) + 1
-    );
-  }
-
-  return { cols, rows, total: cols * rows };
-}
 
 /**
  * GenerateCricutSheet component
@@ -73,7 +39,7 @@ export const GenerateCricutSheet = () => {
     sizePreset === "custom" ? customSizeMm : QR_SIZE_PRESETS[sizePreset].mm;
 
   const capacity = useMemo(
-    () => calculateCapacity(sizeMm, gapMm),
+    () => calculateMatCapacity(sizeMm, gapMm),
     [sizeMm, gapMm]
   );
 
@@ -89,8 +55,8 @@ export const GenerateCricutSheet = () => {
     <div className="flex w-[400px] flex-col gap-2 bg-blue-50 p-4">
       <h3>Cricut Sheet</h3>
       <p className="text-xs text-gray-500">
-        Generates a single SVG packed for Cricut Print Then Cut ({MAT_WIDTH_MM}
-        mm &times; {MAT_HEIGHT_MM}mm mat).
+        Generates a single SVG packed for Cricut Print Then Cut (
+        {CRICUT_MAT.widthMm}mm &times; {CRICUT_MAT.heightMm}mm mat).
       </p>
 
       <Input
@@ -183,7 +149,7 @@ export const GenerateCricutSheet = () => {
         <span className="font-medium">{capacity.total} stickers</span>
         <span className="text-gray-600">
           {" "}
-          ({capacity.cols} &times; {capacity.rows} grid, {sizeMm}mm each)
+          ({capacity.columns} &times; {capacity.rows} grid, {sizeMm}mm each)
         </span>
       </div>
 

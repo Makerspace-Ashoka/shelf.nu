@@ -10,6 +10,11 @@
  */
 
 import QRCode from "qrcode-generator";
+import { calculateMatCapacity, CRICUT_MAT } from "./types";
+
+// Re-export shared Cricut utilities so existing callers importing from this
+// module continue to work without updating their import paths.
+export { CRICUT_MAT, calculateMatCapacity } from "./types";
 
 /** Options for generating a QR code SVG. */
 interface GenerateQrSvgOptions {
@@ -86,12 +91,6 @@ function generateCircularSvg(
   ].join("\n");
 }
 
-/** Cricut Print Then Cut mat dimensions in mm. */
-export const CRICUT_MAT = {
-  widthMm: 150,
-  heightMm: 250,
-} as const;
-
 /** Options for generating a Cricut-compatible merged SVG sheet. */
 interface CricutSheetOptions {
   /** Array of QR data strings (URLs) to encode. */
@@ -108,32 +107,6 @@ interface CricutSheetOptions {
   matWidthMm?: number;
   /** Mat height in mm. Defaults to Cricut Print Then Cut area. */
   matHeightMm?: number;
-}
-
-/**
- * Calculates how many stickers fit on a Cricut mat.
- *
- * @param stickerMm - Sticker size in mm
- * @param gapMm - Gap between stickers in mm
- * @param matWidthMm - Mat width in mm
- * @param matHeightMm - Mat height in mm
- * @returns columns, rows, and total capacity
- */
-export function calculateMatCapacity(
-  stickerMm: number,
-  gapMm: number = 1,
-  matWidthMm: number = CRICUT_MAT.widthMm,
-  matHeightMm: number = CRICUT_MAT.heightMm
-): { columns: number; rows: number; total: number } {
-  // First sticker takes stickerMm, each additional takes stickerMm + gapMm
-  const columns =
-    Math.floor((matWidthMm - stickerMm) / (stickerMm + gapMm)) + 1;
-  const rows = Math.floor((matHeightMm - stickerMm) / (stickerMm + gapMm)) + 1;
-  return {
-    columns: Math.max(1, columns),
-    rows: Math.max(1, rows),
-    total: Math.max(1, columns) * Math.max(1, rows),
-  };
 }
 
 /**
@@ -156,31 +129,14 @@ export function generateCricutSheet({
   matWidthMm = CRICUT_MAT.widthMm,
   matHeightMm = CRICUT_MAT.heightMm,
 }: CricutSheetOptions): string {
-  const { columns, rows } = calculateMatCapacity(
+  // calculateMatCapacity already accounts for proportional scaling when
+  // Cricut fills the mat width, so `rows` is the final adjusted row count.
+  const { columns, rows: finalRows } = calculateMatCapacity(
     sizeMm,
     gapMm,
     matWidthMm,
     matHeightMm
   );
-
-  // Content dimensions = exact space occupied by stickers + gaps
-  const contentWidthMm = columns * sizeMm + (columns - 1) * gapMm;
-  const contentHeightMm = rows * sizeMm + (rows - 1) * gapMm;
-
-  // Scale content to fill mat width exactly, height follows proportionally.
-  // This ensures that when Cricut imports at mat width (150mm),
-  // the height fits within the mat height (250mm).
-  const scale = matWidthMm / contentWidthMm;
-  const scaledHeightMm = contentHeightMm * scale;
-
-  // If scaled height exceeds mat, reduce rows to fit
-  let finalRows = rows;
-  if (scaledHeightMm > matHeightMm) {
-    // Recalculate: how many rows fit when width fills the mat?
-    const maxContentHeight = matHeightMm / scale;
-    finalRows = Math.floor((maxContentHeight - sizeMm) / (sizeMm + gapMm)) + 1;
-    finalRows = Math.max(1, finalRows);
-  }
 
   const finalContentWidth = columns * sizeMm + (columns - 1) * gapMm;
   const finalContentHeight = finalRows * sizeMm + (finalRows - 1) * gapMm;
