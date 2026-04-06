@@ -8,7 +8,8 @@ import { BarcodeDisplay } from "~/components/barcode/barcode-display";
 import { Button } from "~/components/shared/button";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
-import type { QrStyle } from "~/modules/qr/types";
+import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
+import { QR_SIZE_PRESETS, resolveQrSizePx } from "~/modules/qr/types";
 import { resolveShowShelfBranding } from "~/utils/branding";
 import { useBarcodePermissions } from "~/utils/permissions/use-barcode-permissions";
 import { slugify } from "~/utils/slugify";
@@ -89,6 +90,12 @@ export const CodePreview = ({
     organization?.showShelfBranding
   );
   const [isAddBarcodeDialogOpen, setIsAddBarcodeDialogOpen] = useState(false);
+
+  const [qrStyle, setQrStyle] = useState<QrStyle>("square");
+  const [qrSizePreset, setQrSizePreset] = useState<QrSizePreset>("medium");
+  const [customSizeMm, setCustomSizeMm] = useState<number>(50);
+
+  const resolvedSizePx = resolveQrSizePx(qrSizePreset, customSizeMm);
 
   // Build available codes list
   const availableCodes: CodeType[] = useMemo(() => {
@@ -315,6 +322,76 @@ export const CodePreview = ({
         </div>
       </div>
 
+      {/* Style & Size options (QR only) */}
+      {selectedCode?.type === "qr" ? (
+        <div className="border-b border-[#E3E4E8] px-4 py-3">
+          <div className="flex items-center gap-4">
+            {/* Style toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Style</span>
+              <div className="flex rounded-md border border-gray-200">
+                <button
+                  type="button"
+                  onClick={() => setQrStyle("square")}
+                  className={tw(
+                    "px-2 py-1 text-xs",
+                    qrStyle === "square"
+                      ? "bg-gray-100 font-medium text-gray-900"
+                      : "text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  Square
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQrStyle("circular")}
+                  className={tw(
+                    "px-2 py-1 text-xs",
+                    qrStyle === "circular"
+                      ? "bg-gray-100 font-medium text-gray-900"
+                      : "text-gray-500 hover:text-gray-700"
+                  )}
+                >
+                  Circle
+                </button>
+              </div>
+            </div>
+
+            {/* Size selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Size</span>
+              <select
+                value={qrSizePreset}
+                onChange={(e) =>
+                  setQrSizePreset(e.target.value as QrSizePreset)
+                }
+                className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-700"
+              >
+                {Object.entries(QR_SIZE_PRESETS).map(([key, val]) => (
+                  <option key={key} value={key}>
+                    {val.label}
+                  </option>
+                ))}
+                <option value="custom">Custom</option>
+              </select>
+              {qrSizePreset === "custom" ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={10}
+                    max={200}
+                    value={customSizeMm}
+                    onChange={(e) => setCustomSizeMm(Number(e.target.value))}
+                    className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
+                  />
+                  <span className="text-xs text-gray-500">mm</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Code Preview */}
       <div className="flex w-full justify-center pt-6">
         {selectedCode?.type === "qr" ? (
@@ -325,6 +402,8 @@ export const CodePreview = ({
             qrIdDisplayPreference={organization?.qrIdDisplayPreference}
             sequentialId={sequentialId}
             showShelfBranding={resolvedShowShelfBranding}
+            qrStyle={qrStyle}
+            sizePx={resolvedSizePx}
           />
         ) : selectedCode?.type === "barcode" ? (
           <BarcodeLabel
