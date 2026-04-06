@@ -2,14 +2,15 @@
  * Cricut Sheet Generator
  *
  * Admin UI for generating a single merged SVG containing multiple
- * QR code stickers in a grid layout. Designed for Cricut Design Space
- * Print Then Cut workflow.
+ * QR code stickers packed into a Cricut Print Then Cut mat area.
+ * Auto-calculates how many stickers fit based on size and gap settings.
  *
  * @see {@link file://../../routes/_layout+/admin-dashboard+/qrs.cricut[.svg].ts}
+ * @see {@link file://../../modules/qr/svg-generator.server.ts}
  */
 
 import type { ChangeEvent } from "react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigation } from "react-router";
 import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
 import { QR_SIZE_PRESETS } from "~/modules/qr/types";
@@ -18,97 +19,75 @@ import { tw } from "~/utils/tw";
 import Input from "../forms/input";
 import { Button } from "../shared/button";
 
+/** Cricut Print Then Cut mat dimensions in mm. */
+const MAT_WIDTH_MM = 150;
+const MAT_HEIGHT_MM = 250;
+
+/**
+ * Client-side capacity calculation matching the server-side logic.
+ * Determines how many stickers fit on the Cricut mat.
+ */
+function calculateCapacity(stickerMm: number, gapMm: number) {
+  const cols = Math.max(
+    1,
+    Math.floor((MAT_WIDTH_MM + gapMm) / (stickerMm + gapMm))
+  );
+  const rows = Math.max(
+    1,
+    Math.floor((MAT_HEIGHT_MM + gapMm) / (stickerMm + gapMm))
+  );
+  return { cols, rows, total: cols * rows };
+}
+
 /**
  * GenerateCricutSheet component
  *
  * Renders a form that lets admins configure and download a single merged SVG
- * file containing multiple QR code stickers arranged in a grid. The SVG is
- * optimised for Cricut Design Space's Print Then Cut workflow.
- *
- * @returns The Cricut sheet generator panel
+ * file containing QR codes packed edge-to-edge for Cricut cutting.
  */
 export const GenerateCricutSheet = () => {
-  const [amount, setAmount] = useState<number>(20);
   const [batchName, setBatchName] = useState<string>("");
   const [qrStyle, setQrStyle] = useState<QrStyle>("square");
-  const [sizePreset, setSizePreset] = useState<QrSizePreset>("medium");
-  const [customSizeMm, setCustomSizeMm] = useState<number>(50);
-  const [columns, setColumns] = useState<number>(5);
+  const [sizePreset, setSizePreset] = useState<QrSizePreset>("small");
+  const [customSizeMm, setCustomSizeMm] = useState<number>(25);
+  const [gapMm, setGapMm] = useState<number>(1);
   const navigation = useNavigation();
   const disabled = isFormProcessing(navigation.state);
 
-  /** Clamp the QR code count to the allowed range [1, 100]. */
-  function handleAmountChange(e: ChangeEvent<HTMLInputElement>) {
-    const value = Number(e.target.value);
-    setAmount(Math.max(1, Math.min(100, value)));
-  }
-
-  /** Clamp the column count to the allowed range [1, 10]. */
-  function handleColumnsChange(e: ChangeEvent<HTMLInputElement>) {
-    const value = Number(e.target.value);
-    setColumns(Math.max(1, Math.min(10, value)));
-  }
-
-  /** Resolve the effective sticker size in millimetres. */
   const sizeMm =
     sizePreset === "custom" ? customSizeMm : QR_SIZE_PRESETS[sizePreset].mm;
 
-  /**
-   * Build the download URL with all current form values as query params.
-   * A timestamp suffix is appended so that repeat downloads bypass the
-   * browser cache even when the params are identical.
-   */
+  const capacity = useMemo(
+    () => calculateCapacity(sizeMm, gapMm),
+    [sizeMm, gapMm]
+  );
+
   const downloadUrl = `/admin-dashboard/qrs/cricut.svg?${new URLSearchParams({
-    amount: String(amount),
+    amount: String(capacity.total),
     batchName: batchName || "cricut",
     style: qrStyle,
     sizeMm: String(sizeMm),
-    columns: String(columns),
+    gapMm: String(gapMm),
   })}-${new Date().getTime()}`;
 
   return (
     <div className="flex w-[400px] flex-col gap-2 bg-blue-50 p-4">
       <h3>Cricut Sheet</h3>
       <p className="text-xs text-gray-500">
-        Generates a single SVG with all QR codes as grouped stickers. Import
-        into Cricut Design Space, ungroup, and use Print Then Cut.
+        Generates a single SVG packed for Cricut Print Then Cut ({MAT_WIDTH_MM}
+        mm &times; {MAT_HEIGHT_MM}mm mat).
       </p>
 
       <Input
         type="name"
         value={batchName}
-        onChange={(e) => setBatchName(e.target.value)}
+        onChange={(e: ChangeEvent<HTMLInputElement>) =>
+          setBatchName(e.target.value)
+        }
         placeholder="cricut-batch"
         disabled={disabled}
         label="Batch name"
       />
-
-      <div className="flex gap-2">
-        <div className="flex-1">
-          <Input
-            type="number"
-            min={1}
-            max={100}
-            value={amount}
-            onChange={handleAmountChange}
-            placeholder="20"
-            disabled={disabled}
-            label="QR codes"
-          />
-        </div>
-        <div className="flex-1">
-          <Input
-            type="number"
-            min={1}
-            max={10}
-            value={columns}
-            onChange={handleColumnsChange}
-            placeholder="5"
-            disabled={disabled}
-            label="Columns"
-          />
-        </div>
-      </div>
 
       {/* Style toggle */}
       <div>
@@ -143,7 +122,7 @@ export const GenerateCricutSheet = () => {
         </div>
       </div>
 
-      {/* Size preset selector */}
+      {/* Size */}
       <div>
         <label
           htmlFor="cricut-size-preset"
@@ -165,7 +144,6 @@ export const GenerateCricutSheet = () => {
           ))}
           <option value="custom">Custom</option>
         </select>
-        {/* Show a mm input only when the user has chosen the custom preset. */}
         {sizePreset === "custom" ? (
           <div className="mt-2 flex items-center gap-2">
             <input
@@ -182,6 +160,39 @@ export const GenerateCricutSheet = () => {
         ) : null}
       </div>
 
+      {/* Gap */}
+      <div>
+        <label
+          htmlFor="cricut-gap"
+          className="mb-[6px] block text-text-sm font-medium text-gray-700"
+        >
+          Gap between stickers
+        </label>
+        <div className="flex items-center gap-2">
+          <input
+            id="cricut-gap"
+            type="number"
+            min={0}
+            max={10}
+            step={0.5}
+            value={gapMm}
+            onChange={(e) => setGapMm(Number(e.target.value))}
+            disabled={disabled}
+            className="w-20 rounded border border-gray-300 px-2 py-1.5 text-sm"
+          />
+          <span className="text-sm text-gray-500">mm (0 = edge-to-edge)</span>
+        </div>
+      </div>
+
+      {/* Capacity info */}
+      <div className="rounded border border-blue-200 bg-blue-100 px-3 py-2 text-sm">
+        <span className="font-medium">{capacity.total} stickers</span>
+        <span className="text-gray-600">
+          {" "}
+          ({capacity.cols} &times; {capacity.rows} grid, {sizeMm}mm each)
+        </span>
+      </div>
+
       <div>
         <Button
           to={downloadUrl}
@@ -190,10 +201,10 @@ export const GenerateCricutSheet = () => {
           variant="secondary"
           disabled={disabled}
         >
-          Download Cricut SVG
+          Download Cricut SVG ({capacity.total} codes)
         </Button>
         <p className="mt-2 text-xs text-gray-500">
-          Single SVG file. Import → Ungroup → Print Then Cut. Max 100 per sheet.
+          Single SVG file. Import → Ungroup → Print Then Cut.
         </p>
       </div>
     </div>

@@ -126,30 +126,61 @@ function generateCircularSvg(
   ].join("\n");
 }
 
+/** Cricut Print Then Cut mat dimensions in mm. */
+export const CRICUT_MAT = {
+  widthMm: 150,
+  heightMm: 250,
+} as const;
+
 /** Options for generating a Cricut-compatible merged SVG sheet. */
 interface CricutSheetOptions {
   /** Array of QR data strings (URLs) to encode. */
   items: Array<{ id: string; data: string }>;
   /** Sticker size in pixels. */
   sizePx: number;
+  /** Sticker size in mm (used for mat packing calculation). */
+  sizeMm: number;
   /** Frame style for each sticker. */
   style: "square" | "circular";
-  /** Number of columns in the grid layout. */
-  columns: number;
-  /** Spacing between stickers in pixels. */
-  spacing?: number;
-  /** Margin around the entire sheet in pixels. */
-  margin?: number;
+  /** Gap between stickers in mm. 0 = edge-to-edge for clean cuts. */
+  gapMm?: number;
+  /** Mat width in mm. Defaults to Cricut Print Then Cut area. */
+  matWidthMm?: number;
+  /** Mat height in mm. Defaults to Cricut Print Then Cut area. */
+  matHeightMm?: number;
+}
+
+/**
+ * Calculates how many stickers fit on a Cricut mat.
+ *
+ * @param stickerMm - Sticker size in mm
+ * @param gapMm - Gap between stickers in mm
+ * @param matWidthMm - Mat width in mm
+ * @param matHeightMm - Mat height in mm
+ * @returns columns, rows, and total capacity
+ */
+export function calculateMatCapacity(
+  stickerMm: number,
+  gapMm: number = 1,
+  matWidthMm: number = CRICUT_MAT.widthMm,
+  matHeightMm: number = CRICUT_MAT.heightMm
+): { columns: number; rows: number; total: number } {
+  const columns = Math.floor((matWidthMm + gapMm) / (stickerMm + gapMm));
+  const rows = Math.floor((matHeightMm + gapMm) / (stickerMm + gapMm));
+  return {
+    columns: Math.max(1, columns),
+    rows: Math.max(1, rows),
+    total: Math.max(1, columns) * Math.max(1, rows),
+  };
 }
 
 /**
  * Generates a single merged SVG containing multiple QR code stickers
- * arranged in a grid. Each sticker is a <g> group that can be
- * individually selected and arranged in Cricut Design Space after
- * ungrouping.
+ * packed into a Cricut Print Then Cut mat area. Stickers are arranged
+ * edge-to-edge (or with minimal gap) for clean cutting.
  *
- * Optimized for Cricut: block-style modules, minimal nodes,
- * native SVG elements (no CSS).
+ * Each sticker is a <g> group that can be ungrouped in Cricut Design
+ * Space. Block-style modules, minimal SVG nodes, no CSS.
  *
  * @param options - Sheet configuration
  * @returns Complete SVG markup as a string
@@ -157,25 +188,38 @@ interface CricutSheetOptions {
 export function generateCricutSheet({
   items,
   sizePx,
+  sizeMm,
   style,
-  columns,
-  spacing = 20,
-  margin = 20,
+  gapMm = 1,
+  matWidthMm = CRICUT_MAT.widthMm,
+  matHeightMm = CRICUT_MAT.heightMm,
 }: CricutSheetOptions): string {
-  const rows = Math.ceil(items.length / columns);
-  const totalWidth = margin * 2 + columns * sizePx + (columns - 1) * spacing;
-  const totalHeight = margin * 2 + rows * sizePx + (rows - 1) * spacing;
+  const { columns, rows } = calculateMatCapacity(
+    sizeMm,
+    gapMm,
+    matWidthMm,
+    matHeightMm
+  );
+
+  // Convert gap from mm to px at same scale as sticker
+  const pxPerMm = sizePx / sizeMm;
+  const gapPx = Math.round(gapMm * pxPerMm);
+
+  const totalWidth = columns * sizePx + (columns - 1) * gapPx;
+  const totalHeight = rows * sizePx + (rows - 1) * gapPx;
+
+  // Only render as many items as we have (or as many as fit)
+  const maxItems = Math.min(items.length, columns * rows);
 
   const groups: string[] = [];
 
-  for (let i = 0; i < items.length; i++) {
+  for (let i = 0; i < maxItems; i++) {
     const item = items[i];
     const col = i % columns;
     const row = Math.floor(i / columns);
-    const offsetX = margin + col * (sizePx + spacing);
-    const offsetY = margin + row * (sizePx + spacing);
+    const offsetX = col * (sizePx + gapPx);
+    const offsetY = row * (sizePx + gapPx);
 
-    // Generate individual QR SVG (without outer <svg> wrapper)
     const innerSvg = generateQrSvgInner({
       data: item.data,
       sizePx,
@@ -189,7 +233,7 @@ export function generateCricutSheet({
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">`,
-    `  <!-- Cricut QR Sheet: ${items.length} stickers, ${columns}x${rows} grid -->`,
+    `  <!-- Cricut QR Sheet: ${maxItems} stickers, ${columns}x${rows} grid, ${sizeMm}mm each, ${gapMm}mm gap -->`,
     groups.join("\n"),
     `</svg>`,
   ].join("\n");

@@ -31,8 +31,8 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const batchName =
       (url.searchParams.get("batchName") as string) || "cricut-batch";
     const style = (url.searchParams.get("style") || "square") as QrStyle;
-    const sizeMm = Number(url.searchParams.get("sizeMm")) || 50;
-    const columns = Number(url.searchParams.get("columns")) || 5;
+    const sizeMm = Number(url.searchParams.get("sizeMm")) || 25;
+    const gapMm = Number(url.searchParams.get("gapMm")) || 1;
     const sizePx = mmToPx(sizeMm);
 
     const codes = await generateUnclaimedCodesForPrint({
@@ -49,8 +49,9 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
     const svg = generateCricutSheet({
       items,
       sizePx,
+      sizeMm,
       style,
-      columns,
+      gapMm,
     });
 
     return new Response(svg, {
