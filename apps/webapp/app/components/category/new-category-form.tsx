@@ -147,6 +147,7 @@ export default function NewCategoryForm({
             allowClear={true}
             defaultValue={parentId ?? undefined}
             excludeItems={excludeId ? [excludeId] : undefined}
+            popoverZIndexClassName={hasOnSuccessFunc ? "z-[10000]" : undefined}
           />
         </div>
 
