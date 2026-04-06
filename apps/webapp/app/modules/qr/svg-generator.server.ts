@@ -165,8 +165,10 @@ export function calculateMatCapacity(
   matWidthMm: number = CRICUT_MAT.widthMm,
   matHeightMm: number = CRICUT_MAT.heightMm
 ): { columns: number; rows: number; total: number } {
-  const columns = Math.floor((matWidthMm + gapMm) / (stickerMm + gapMm));
-  const rows = Math.floor((matHeightMm + gapMm) / (stickerMm + gapMm));
+  // First sticker takes stickerMm, each additional takes stickerMm + gapMm
+  const columns =
+    Math.floor((matWidthMm - stickerMm) / (stickerMm + gapMm)) + 1;
+  const rows = Math.floor((matHeightMm - stickerMm) / (stickerMm + gapMm)) + 1;
   return {
     columns: Math.max(1, columns),
     rows: Math.max(1, rows),
@@ -201,12 +203,9 @@ export function generateCricutSheet({
     matHeightMm
   );
 
-  // Convert gap from mm to px at same scale as sticker
-  const pxPerMm = sizePx / sizeMm;
-  const gapPx = Math.round(gapMm * pxPerMm);
-
-  const totalWidth = columns * sizePx + (columns - 1) * gapPx;
-  const totalHeight = rows * sizePx + (rows - 1) * gapPx;
+  // Work in mm for the coordinate system so Cricut gets correct physical size
+  const totalWidthMm = columns * sizeMm + (columns - 1) * gapMm;
+  const totalHeightMm = rows * sizeMm + (rows - 1) * gapMm;
 
   // Only render as many items as we have (or as many as fit)
   const maxItems = Math.min(items.length, columns * rows);
@@ -217,12 +216,13 @@ export function generateCricutSheet({
     const item = items[i];
     const col = i % columns;
     const row = Math.floor(i / columns);
-    const offsetX = col * (sizePx + gapPx);
-    const offsetY = row * (sizePx + gapPx);
+    const offsetX = col * (sizeMm + gapMm);
+    const offsetY = row * (sizeMm + gapMm);
 
+    // Generate using mm as the coordinate unit
     const innerSvg = generateQrSvgInner({
       data: item.data,
-      sizePx,
+      sizePx: sizeMm, // use mm as the coordinate unit
       style,
       offsetX,
       offsetY,
@@ -232,7 +232,7 @@ export function generateCricutSheet({
   }
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidth}" height="${totalHeight}" viewBox="0 0 ${totalWidth} ${totalHeight}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${totalWidthMm}mm" height="${totalHeightMm}mm" viewBox="0 0 ${totalWidthMm} ${totalHeightMm}">`,
     `  <!-- Cricut QR Sheet: ${maxItems} stickers, ${columns}x${rows} grid, ${sizeMm}mm each, ${gapMm}mm gap -->`,
     groups.join("\n"),
     `</svg>`,

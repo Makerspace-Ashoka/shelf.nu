@@ -28,13 +28,14 @@ const MAT_HEIGHT_MM = 250;
  * Determines how many stickers fit on the Cricut mat.
  */
 function calculateCapacity(stickerMm: number, gapMm: number) {
+  // First sticker takes stickerMm, each additional takes stickerMm + gapMm
   const cols = Math.max(
     1,
-    Math.floor((MAT_WIDTH_MM + gapMm) / (stickerMm + gapMm))
+    Math.floor((MAT_WIDTH_MM - stickerMm) / (stickerMm + gapMm)) + 1
   );
   const rows = Math.max(
     1,
-    Math.floor((MAT_HEIGHT_MM + gapMm) / (stickerMm + gapMm))
+    Math.floor((MAT_HEIGHT_MM - stickerMm) / (stickerMm + gapMm)) + 1
   );
   return { cols, rows, total: cols * rows };
 }
