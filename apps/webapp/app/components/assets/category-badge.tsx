@@ -35,6 +35,7 @@ import {
 /** Minimal category shape needed for the badge. */
 type CategorySummary = Pick<Category, "id" | "name" | "color"> & {
   parentId?: Category["parentId"];
+  parentName?: string | null;
   childCount?: number;
 };
 
@@ -106,6 +107,18 @@ export function CategoryBadge({ category, className }: CategoryBadgeProps) {
     enabled: shouldFetch && hasHierarchy && Boolean(category?.id),
   });
 
+  /** Renders the optional parent name link above the badge. */
+  const parentLabel =
+    category?.parentId && category?.parentName ? (
+      <a
+        href={`/categories/${category.parentId}`}
+        className="truncate text-[10px] leading-tight text-gray-400 hover:text-gray-600 hover:underline"
+        title={category.parentName}
+      >
+        {category.parentName}
+      </a>
+    ) : null;
+
   // No category — show "Uncategorized" badge
   if (!category) {
     return (
@@ -118,9 +131,12 @@ export function CategoryBadge({ category, className }: CategoryBadgeProps) {
   // No hierarchy or no permission — simple colored badge
   if (!hasHierarchy || !canReadCategories) {
     return (
-      <Badge color={category.color} withDot={false} className={className}>
-        {category.name}
-      </Badge>
+      <div className="flex flex-col items-start gap-0.5">
+        {parentLabel}
+        <Badge color={category.color} withDot={false} className={className}>
+          {category.name}
+        </Badge>
+      </div>
     );
   }
 
@@ -194,25 +210,28 @@ export function CategoryBadge({ category, className }: CategoryBadgeProps) {
   })();
 
   return (
-    <HoverCard onOpenChange={handleOpenChange} openDelay={0}>
-      <HoverCardTrigger asChild>
-        <span onMouseEnter={handleMouseEnter} className="inline-flex">
-          <Badge color={category.color} withDot={false} className={className}>
-            <span className="inline-flex items-center gap-1">
-              <span className="max-w-[150px] truncate">{category.name}</span>
-              <ListTree className="size-3.5" strokeWidth={1.75} />
-            </span>
-          </Badge>
-        </span>
-      </HoverCardTrigger>
-      <HoverCardPortal>
-        <HoverCardContent
-          className="max-w-md"
-          style={{ width: "max-content", minWidth: "18rem" }}
-        >
-          {content}
-        </HoverCardContent>
-      </HoverCardPortal>
-    </HoverCard>
+    <div className="flex flex-col items-start gap-0.5">
+      {parentLabel}
+      <HoverCard onOpenChange={handleOpenChange} openDelay={0}>
+        <HoverCardTrigger asChild>
+          <span onMouseEnter={handleMouseEnter} className="inline-flex">
+            <Badge color={category.color} withDot={false} className={className}>
+              <span className="inline-flex items-center gap-1">
+                <span className="max-w-[150px] truncate">{category.name}</span>
+                <ListTree className="size-3.5" strokeWidth={1.75} />
+              </span>
+            </Badge>
+          </span>
+        </HoverCardTrigger>
+        <HoverCardPortal>
+          <HoverCardContent
+            className="max-w-md"
+            style={{ width: "max-content", minWidth: "18rem" }}
+          >
+            {content}
+          </HoverCardContent>
+        </HoverCardPortal>
+      </HoverCard>
+    </div>
   );
 }

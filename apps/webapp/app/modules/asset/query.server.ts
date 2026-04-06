@@ -1759,6 +1759,12 @@ export const assetQueryFragment = (options: AssetQueryOptions = {}) => {
         )
         ELSE 0
       END AS "categoryChildCount",
+      CASE
+        WHEN c."parentId" IS NOT NULL THEN (
+          SELECT cp.name FROM public."Category" cp WHERE cp.id = c."parentId"
+        )
+        ELSE NULL
+      END AS "categoryParentName",
       l."parentId" AS "locationParentId",
       CASE
         WHEN l.id IS NOT NULL THEN (
@@ -1932,7 +1938,7 @@ export const assetReturnFragment = (options: AssetReturnOptions = {}) => {
           'availableToBook', aq."assetAvailableToBook",
           'kitId', aq."assetKitId",
           'kit', CASE WHEN aq."kitId" IS NOT NULL THEN jsonb_build_object('id', aq."kitId", 'name', aq."kitName", 'status', aq."kitStatus") ELSE NULL END,
-          'category', CASE WHEN aq."categoryId" IS NOT NULL THEN jsonb_build_object('id', aq."categoryId", 'name', aq."categoryName", 'color', aq."categoryColor", 'parentId', aq."categoryParentId", 'childCount', aq."categoryChildCount") ELSE NULL END,
+          'category', CASE WHEN aq."categoryId" IS NOT NULL THEN jsonb_build_object('id', aq."categoryId", 'name', aq."categoryName", 'color', aq."categoryColor", 'parentId', aq."categoryParentId", 'parentName', aq."categoryParentName", 'childCount', aq."categoryChildCount") ELSE NULL END,
           'tags', aq.tags,
           'location', CASE 
             WHEN aq."assetLocationId" IS NOT NULL THEN jsonb_build_object(
