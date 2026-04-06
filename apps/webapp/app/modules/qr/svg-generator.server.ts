@@ -203,15 +203,30 @@ export function generateCricutSheet({
     matHeightMm
   );
 
-  // Use exact mat dimensions so Cricut doesn't rescale.
-  // Stickers are centered within the mat area.
+  // Content dimensions = exact space occupied by stickers + gaps
   const contentWidthMm = columns * sizeMm + (columns - 1) * gapMm;
   const contentHeightMm = rows * sizeMm + (rows - 1) * gapMm;
-  const padX = (matWidthMm - contentWidthMm) / 2;
-  const padY = (matHeightMm - contentHeightMm) / 2;
+
+  // Scale content to fill mat width exactly, height follows proportionally.
+  // This ensures that when Cricut imports at mat width (150mm),
+  // the height fits within the mat height (250mm).
+  const scale = matWidthMm / contentWidthMm;
+  const scaledHeightMm = contentHeightMm * scale;
+
+  // If scaled height exceeds mat, reduce rows to fit
+  let finalRows = rows;
+  if (scaledHeightMm > matHeightMm) {
+    // Recalculate: how many rows fit when width fills the mat?
+    const maxContentHeight = matHeightMm / scale;
+    finalRows = Math.floor((maxContentHeight - sizeMm) / (sizeMm + gapMm)) + 1;
+    finalRows = Math.max(1, finalRows);
+  }
+
+  const finalContentWidth = columns * sizeMm + (columns - 1) * gapMm;
+  const finalContentHeight = finalRows * sizeMm + (finalRows - 1) * gapMm;
 
   // Only render as many items as we have (or as many as fit)
-  const maxItems = Math.min(items.length, columns * rows);
+  const maxItems = Math.min(items.length, columns * finalRows);
 
   const groups: string[] = [];
 
@@ -219,8 +234,8 @@ export function generateCricutSheet({
     const item = items[i];
     const col = i % columns;
     const row = Math.floor(i / columns);
-    const offsetX = padX + col * (sizeMm + gapMm);
-    const offsetY = padY + row * (sizeMm + gapMm);
+    const offsetX = col * (sizeMm + gapMm);
+    const offsetY = row * (sizeMm + gapMm);
 
     // Generate using mm as the coordinate unit
     const innerSvg = generateQrSvgInner({
@@ -236,12 +251,12 @@ export function generateCricutSheet({
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${(
-      (matWidthMm / 25.4) *
+      (finalContentWidth / 25.4) *
       72
-    ).toFixed(1)}" height="${((matHeightMm / 25.4) * 72).toFixed(
+    ).toFixed(1)}" height="${((finalContentHeight / 25.4) * 72).toFixed(
       1
-    )}" viewBox="0 0 ${matWidthMm} ${matHeightMm}">`,
-    `  <!-- Cricut QR Sheet: ${maxItems} stickers, ${columns}x${rows} grid, ${sizeMm}mm each, ${gapMm}mm gap, ${matWidthMm}x${matHeightMm}mm mat -->`,
+    )}" viewBox="0 0 ${finalContentWidth} ${finalContentHeight}">`,
+    `  <!-- Cricut QR Sheet: ${maxItems} stickers, ${columns}x${finalRows} grid, ${sizeMm}mm each, ${gapMm}mm gap -->`,
     groups.join("\n"),
     `</svg>`,
   ].join("\n");

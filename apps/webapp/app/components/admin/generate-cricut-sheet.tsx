@@ -33,10 +33,24 @@ function calculateCapacity(stickerMm: number, gapMm: number) {
     1,
     Math.floor((MAT_WIDTH_MM - stickerMm) / (stickerMm + gapMm)) + 1
   );
-  const rows = Math.max(
+  let rows = Math.max(
     1,
     Math.floor((MAT_HEIGHT_MM - stickerMm) / (stickerMm + gapMm)) + 1
   );
+
+  // When Cricut scales width to fill the mat, height scales proportionally.
+  // Reduce rows if the scaled height would exceed the mat.
+  const contentW = cols * stickerMm + (cols - 1) * gapMm;
+  const scale = MAT_WIDTH_MM / contentW;
+  const contentH = rows * stickerMm + (rows - 1) * gapMm;
+  if (contentH * scale > MAT_HEIGHT_MM) {
+    const maxContentH = MAT_HEIGHT_MM / scale;
+    rows = Math.max(
+      1,
+      Math.floor((maxContentH - stickerMm) / (stickerMm + gapMm)) + 1
+    );
+  }
+
   return { cols, rows, total: cols * rows };
 }
 
