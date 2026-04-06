@@ -582,6 +582,43 @@ async function validateParentLocation({
   return parentLocation.id;
 }
 
+/**
+ * Fetches locations at a given hierarchy level with child indicator.
+ * Used by the hierarchical location selector to show one level at a time.
+ *
+ * @param organizationId - Scoping organization
+ * @param parentId - Parent location ID, or null for root-level locations
+ * @param search - Optional search filter on location name
+ * @returns Array of locations with hasChildren flag
+ */
+export async function getLocationsByParentId(params: {
+  organizationId: Organization["id"];
+  parentId: string | null;
+  search?: string;
+}) {
+  const { organizationId, parentId, search } = params;
+
+  const where: Prisma.LocationWhereInput = {
+    organizationId,
+    parentId,
+    ...(search && {
+      name: { contains: search, mode: "insensitive" as const },
+    }),
+  };
+
+  const locations = await db.location.findMany({
+    where,
+    include: { _count: { select: { children: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  return locations.map((l) => ({
+    id: l.id,
+    name: l.name,
+    hasChildren: l._count.children > 0,
+  }));
+}
+
 export async function createLocation({
   name,
   description,
