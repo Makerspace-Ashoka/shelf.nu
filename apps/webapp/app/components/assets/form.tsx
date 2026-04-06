@@ -664,7 +664,10 @@ export const AssetForm = ({
               categoryId ||
               undefined
             }
-            extraContent={({ currentParentId, closePopover }) => (
+            extraContent={({
+              currentParentId: _currentParentId,
+              closePopover,
+            }) => (
               <InlineEntityCreationDialog
                 title="Create new category"
                 type="category"
