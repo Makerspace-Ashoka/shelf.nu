@@ -235,7 +235,12 @@ export function generateCricutSheet({
   }
 
   return [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${matWidthMm}mm" height="${matHeightMm}mm" viewBox="0 0 ${matWidthMm} ${matHeightMm}">`,
+    `<svg xmlns="http://www.w3.org/2000/svg" width="${(
+      (matWidthMm / 25.4) *
+      72
+    ).toFixed(1)}" height="${((matHeightMm / 25.4) * 72).toFixed(
+      1
+    )}" viewBox="0 0 ${matWidthMm} ${matHeightMm}">`,
     `  <!-- Cricut QR Sheet: ${maxItems} stickers, ${columns}x${rows} grid, ${sizeMm}mm each, ${gapMm}mm gap, ${matWidthMm}x${matHeightMm}mm mat -->`,
     groups.join("\n"),
     `</svg>`,
