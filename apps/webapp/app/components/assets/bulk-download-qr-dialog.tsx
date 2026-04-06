@@ -13,9 +13,9 @@ import type { BulkQrDownloadLoaderData } from "~/routes/api+/assets.get-assets-f
 import { generateHtmlFromComponent } from "~/utils/component-to-html";
 import { isSelectingAllItems } from "~/utils/list";
 import { sanitizeFilename } from "~/utils/misc";
-import { tw } from "~/utils/tw";
 import { QrLabel } from "../code-preview/code-preview";
 import { Dialog, DialogPortal } from "../layout/dialog";
+import { QrStyleToggle } from "../qr/qr-style-toggle";
 import { Button } from "../shared/button";
 import { Spinner } from "../shared/spinner";
 import When from "../when/when";
@@ -260,32 +260,7 @@ export default function BulkDownloadQrDialog({
                     <span className="text-sm font-medium text-gray-700">
                       Style
                     </span>
-                    <div className="flex rounded-md border border-gray-200">
-                      <button
-                        type="button"
-                        onClick={() => setQrStyle("square")}
-                        className={tw(
-                          "px-3 py-1.5 text-sm",
-                          qrStyle === "square"
-                            ? "bg-gray-100 font-medium text-gray-900"
-                            : "text-gray-500 hover:text-gray-700"
-                        )}
-                      >
-                        Square
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setQrStyle("circular")}
-                        className={tw(
-                          "px-3 py-1.5 text-sm",
-                          qrStyle === "circular"
-                            ? "bg-gray-100 font-medium text-gray-900"
-                            : "text-gray-500 hover:text-gray-700"
-                        )}
-                      >
-                        Circle
-                      </button>
-                    </div>
+                    <QrStyleToggle value={qrStyle} onChange={setQrStyle} />
                   </div>
 
                   {/* Size selector */}

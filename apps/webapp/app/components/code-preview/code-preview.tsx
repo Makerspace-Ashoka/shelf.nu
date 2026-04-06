@@ -19,6 +19,7 @@ import { AddBarcodeDialog } from "./add-barcode-dialog";
 import { Ean13LookupLink } from "../barcode/barcode-card";
 import { UnlockBarcodesModal } from "../barcode/unlock-barcodes-banner";
 import { CrispButton } from "../marketing/crisp";
+import { QrStyleToggle } from "../qr/qr-style-toggle";
 import When from "../when/when";
 
 type SizeKeys = "cable" | "small" | "medium" | "large";
@@ -329,32 +330,7 @@ export const CodePreview = ({
             {/* Style toggle */}
             <div className="flex items-center gap-2">
               <span className="text-xs font-medium text-gray-500">Style</span>
-              <div className="flex rounded-md border border-gray-200">
-                <button
-                  type="button"
-                  onClick={() => setQrStyle("square")}
-                  className={tw(
-                    "px-2 py-1 text-xs",
-                    qrStyle === "square"
-                      ? "bg-gray-100 font-medium text-gray-900"
-                      : "text-gray-500 hover:text-gray-700"
-                  )}
-                >
-                  Square
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setQrStyle("circular")}
-                  className={tw(
-                    "px-2 py-1 text-xs",
-                    qrStyle === "circular"
-                      ? "bg-gray-100 font-medium text-gray-900"
-                      : "text-gray-500 hover:text-gray-700"
-                  )}
-                >
-                  Circle
-                </button>
-              </div>
+              <QrStyleToggle value={qrStyle} onChange={setQrStyle} size="sm" />
             </div>
 
             {/* Size selector */}

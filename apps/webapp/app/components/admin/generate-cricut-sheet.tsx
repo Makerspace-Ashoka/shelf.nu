@@ -15,8 +15,8 @@ import { useNavigation } from "react-router";
 import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
 import { QR_SIZE_PRESETS } from "~/modules/qr/types";
 import { isFormProcessing } from "~/utils/form";
-import { tw } from "~/utils/tw";
 import Input from "../forms/input";
+import { QrStyleToggle } from "../qr/qr-style-toggle";
 import { Button } from "../shared/button";
 
 /** Cricut Print Then Cut mat dimensions in mm. */
@@ -109,32 +109,11 @@ export const GenerateCricutSheet = () => {
         <span className="mb-[6px] block text-text-sm font-medium text-gray-700">
           Style
         </span>
-        <div className="flex rounded-md border border-gray-300">
-          <button
-            type="button"
-            onClick={() => setQrStyle("square")}
-            className={tw(
-              "flex-1 px-3 py-1.5 text-sm",
-              qrStyle === "square"
-                ? "bg-gray-100 font-medium text-gray-900"
-                : "text-gray-500 hover:text-gray-700"
-            )}
-          >
-            Square
-          </button>
-          <button
-            type="button"
-            onClick={() => setQrStyle("circular")}
-            className={tw(
-              "flex-1 px-3 py-1.5 text-sm",
-              qrStyle === "circular"
-                ? "bg-gray-100 font-medium text-gray-900"
-                : "text-gray-500 hover:text-gray-700"
-            )}
-          >
-            Circle
-          </button>
-        </div>
+        <QrStyleToggle
+          value={qrStyle}
+          onChange={setQrStyle}
+          disabled={disabled}
+        />
       </div>
 
       {/* Size */}
