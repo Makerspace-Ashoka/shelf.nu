@@ -22,9 +22,15 @@ export function createSSOFormData(
     customClaims.lastname || customClaims.lastName || ""
   );
 
-  // Groups
-  const groups = customClaims.groups;
-  formData.append("groups", JSON.stringify(groups || []));
+  // Groups — normalize Zitadel's object format ({"role": {"org_id": "..."}})
+  // into the flat string array that getRoleFromGroupId() expects.
+  const rawGroups = customClaims.groups;
+  const groups = Array.isArray(rawGroups)
+    ? rawGroups
+    : rawGroups && typeof rawGroups === "object"
+    ? Object.keys(rawGroups)
+    : [];
+  formData.append("groups", JSON.stringify(groups));
 
   // Contact information - map from SSO field names to our schema
   formData.append("phone", customClaims.mobilephone || "");
