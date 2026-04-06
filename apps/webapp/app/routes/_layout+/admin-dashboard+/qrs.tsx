@@ -13,6 +13,7 @@ import {
 } from "react-router";
 import { z } from "zod";
 import { GenerateBatchQr } from "~/components/admin/generate-batch-qr";
+import { GenerateCricutSheet } from "~/components/admin/generate-cricut-sheet";
 import { MarkBatchAsPrinted } from "~/components/admin/mark-batch-as-printed";
 import { ErrorContent } from "~/components/errors";
 import {
@@ -120,6 +121,7 @@ export default function Area51() {
       <div className="mt-8 flex flex-1 flex-col md:mx-0 md:gap-2">
         <div className="flex gap-2">
           <GenerateBatchQr />
+          <GenerateCricutSheet />
           <MarkBatchAsPrinted />
         </div>
 
