@@ -59,7 +59,7 @@ vi.mock("~/utils/http.server", () => ({
 }));
 
 vi.mock("~/modules/asset/utils.server", () => ({
-  getAssetsWhereInput: vi.fn(),
+  getAssetsWhereInput: vi.fn().mockResolvedValue({}),
 }));
 
 // Mock request and context objects

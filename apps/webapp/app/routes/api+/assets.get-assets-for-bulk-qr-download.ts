@@ -61,7 +61,7 @@ export async function loader({ context, request }: ActionFunctionArgs) {
 
     /* If we are selecting all assets in list then we have to consider other filters  */
     const where: Prisma.AssetWhereInput = assetIds.includes(ALL_SELECTED_KEY)
-      ? getAssetsWhereInput({
+      ? await getAssetsWhereInput({
           organizationId,
           currentSearchParams: searchParams.toString(),
         })

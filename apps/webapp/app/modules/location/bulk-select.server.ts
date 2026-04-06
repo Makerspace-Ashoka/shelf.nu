@@ -24,7 +24,7 @@ export async function resolveLocationAssetIds({
   }
 
   const searchParams = getCurrentSearchParams(request);
-  const assetsWhere = getAssetsWhereInput({
+  const assetsWhere = await getAssetsWhereInput({
     organizationId,
     currentSearchParams: searchParams.toString(),
   });

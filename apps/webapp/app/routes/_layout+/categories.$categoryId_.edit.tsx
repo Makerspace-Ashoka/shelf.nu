@@ -1,3 +1,15 @@
+/**
+ * Edit Category Route
+ *
+ * Handles loading a single category for editing and processing the update
+ * action. Uses `NewCategoryFormSchema` (which includes the `parentId` field)
+ * so that parent-category assignments can be updated during an edit.
+ * The inline form renders a `DynamicSelect` for the parent selector,
+ * mirroring what `NewCategoryForm` does for the create flow.
+ *
+ * @see {@link file://./../../modules/category/service.server.ts}
+ * @see {@link file://./../../components/category/new-category-form.tsx}
+ */
 import type { LoaderFunctionArgs, MetaFunction } from "react-router";
 import {
   data,
@@ -8,7 +20,9 @@ import {
 } from "react-router";
 import { useZorm } from "react-zorm";
 import { z } from "zod";
+import { NewCategoryFormSchema } from "~/components/category/new-category-form";
 import { Form } from "~/components/custom-form";
+import DynamicSelect from "~/components/dynamic-select/dynamic-select";
 import { ColorInput } from "~/components/forms/color-input";
 import Input from "~/components/forms/input";
 
@@ -27,12 +41,6 @@ import {
 } from "~/utils/permissions/permission.data";
 import { requirePermission } from "~/utils/roles.server";
 import { zodFieldIsRequired } from "~/utils/zod";
-
-export const UpdateCategoryFormSchema = z.object({
-  name: z.string().min(3, "Name is required"),
-  description: z.string(),
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-});
 
 const title = "Edit category";
 
@@ -62,6 +70,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
 
     const header = { title };
 
+    /** Include parentId so the form can pre-populate the parent selector. */
     return payload({ header, colorFromServer, category });
   } catch (cause) {
     const reason = makeShelfError(cause, { userId, id });
@@ -92,18 +101,22 @@ export async function action({ context, request, params }: LoaderFunctionArgs) {
       action: PermissionAction.update,
     });
 
-    const payload = parseData(
+    /** Parse with NewCategoryFormSchema to include parentId in validation. */
+    const { name, description, color, parentId } = parseData(
       await request.formData(),
-      UpdateCategoryFormSchema,
+      NewCategoryFormSchema,
       {
         additionalData: { userId, id, organizationId },
       }
     );
 
     await updateCategory({
-      ...payload,
       id,
+      name,
+      description,
+      color,
       organizationId,
+      parentId,
     });
 
     sendNotification({
@@ -121,7 +134,7 @@ export async function action({ context, request, params }: LoaderFunctionArgs) {
 }
 
 export default function EditCategory() {
-  const zo = useZorm("NewQuestionWizardScreen", UpdateCategoryFormSchema);
+  const zo = useZorm("NewQuestionWizardScreen", NewCategoryFormSchema);
   const navigation = useNavigation();
   const disabled = isFormProcessing(navigation.state);
   const { colorFromServer, category } = useLoaderData<typeof loader>();
@@ -135,7 +148,7 @@ export default function EditCategory() {
       ref={zo.ref}
     >
       <div className="lg:flex lg:items-end lg:justify-between lg:gap-3">
-        <div className="gap-3 lg:flex lg:items-end">
+        <div className="gap-3 lg:flex lg:flex-wrap lg:items-end">
           <Input
             label="Name"
             placeholder="Category name"
@@ -145,7 +158,7 @@ export default function EditCategory() {
             error={zo.errors.name()?.message}
             hideErrorText
             autoFocus
-            required={zodFieldIsRequired(UpdateCategoryFormSchema.shape.name)}
+            required={zodFieldIsRequired(NewCategoryFormSchema.shape.name)}
             defaultValue={category.name}
           />
           <Input
@@ -156,7 +169,7 @@ export default function EditCategory() {
             data-test-id="categoryDescription"
             className="mb-4 lg:mb-0"
             required={zodFieldIsRequired(
-              UpdateCategoryFormSchema.shape.description
+              NewCategoryFormSchema.shape.description
             )}
             defaultValue={category.description || undefined}
           />
@@ -167,9 +180,28 @@ export default function EditCategory() {
               error={zo.errors.color()?.message}
               hideErrorText
               colorFromServer={colorFromServer}
-              required={zodFieldIsRequired(
-                UpdateCategoryFormSchema.shape.color
-              )}
+              required={zodFieldIsRequired(NewCategoryFormSchema.shape.color)}
+            />
+          </div>
+
+          {/* Parent category selector — allows changing/clearing the hierarchy assignment */}
+          <div className="mb-4 lg:mb-0">
+            <DynamicSelect
+              disabled={disabled}
+              model={{ name: "category", queryKey: "name" }}
+              fieldName="parentId"
+              contentLabel="Categories"
+              label="Parent category"
+              initialDataKey="categories"
+              countKey="totalCategories"
+              placeholder="No parent"
+              closeOnSelect
+              selectionMode="set"
+              allowClear={true}
+              /** Pre-populate with the current parent so the user sees existing assignment */
+              defaultValue={category.parentId ?? undefined}
+              /** Exclude the category itself to prevent self-parenting */
+              excludeItems={[category.id]}
             />
           </div>
         </div>

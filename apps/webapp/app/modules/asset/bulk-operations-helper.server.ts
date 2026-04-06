@@ -152,7 +152,7 @@ export async function resolveAssetIdsForBulkOperation({
   } else {
     // SIMPLE MODE: Use simple where clause
     // Note: getAssetsWhereInput will safely ignore any advanced filter syntax
-    const where = getAssetsWhereInput({
+    const where = await getAssetsWhereInput({
       organizationId,
       currentSearchParams,
     });

@@ -14,6 +14,11 @@ vitest.mock("~/modules/location/descendants.server", () => ({
   getLocationDescendantIds: vitest.fn().mockResolvedValue([]),
 }));
 
+vi.mock("~/modules/category/descendants.server", () => ({
+  getCategoryDescendantIds: vi.fn().mockResolvedValue([]),
+  // why: prevent real DB queries in unit tests — descendant expansion is tested in category service tests
+}));
+
 // why: controlling display value formatting for different custom field types (boolean, multiline text) in note generation tests
 vitest.mock("~/utils/custom-fields", () => ({
   getCustomFieldDisplayValue: vitest.fn((value: any) => {
