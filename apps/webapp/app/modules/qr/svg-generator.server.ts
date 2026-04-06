@@ -52,76 +52,36 @@ export function generateQrSvg({
 
 /**
  * Generates a square-framed QR code SVG.
- * The QR is centered with a quiet zone margin inside a square border.
+ * Delegates to generateSquareSvgInner with zero offset and wraps in an <svg> tag.
+ * Uses a compound <path> for all dark modules (fewer nodes, better performance).
  */
 function generateSquareSvg(
   qr: ReturnType<typeof QRCode>,
   moduleCount: number,
   sizePx: number
 ): string {
-  const margin = sizePx * 0.08;
-  const qrArea = sizePx - margin * 2;
-  const cellSize = qrArea / moduleCount;
-
-  const rects: string[] = [];
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (qr.isDark(row, col)) {
-        const x = (margin + col * cellSize).toFixed(2);
-        const y = (margin + row * cellSize).toFixed(2);
-        const w = cellSize.toFixed(2);
-        rects.push(
-          `<rect x="${x}" y="${y}" width="${w}" height="${w}" fill="black"/>`
-        );
-      }
-    }
-  }
-
+  const inner = generateSquareSvgInner(qr, moduleCount, sizePx, 0, 0);
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}">`,
-    `  <rect width="${sizePx}" height="${sizePx}" fill="white" stroke="black" stroke-width="1"/>`,
-    `  ${rects.join("\n  ")}`,
+    inner,
     `</svg>`,
   ].join("\n");
 }
 
 /**
  * Generates a circular-framed QR code SVG.
- * The QR square is inscribed inside a circle: side = diameter / sqrt(2).
- * This guarantees the full QR pattern fits within the circle.
+ * Delegates to generateCircularSvgInner with zero offset and wraps in an <svg> tag.
+ * Uses a compound <path> for all dark modules (fewer nodes, better performance).
  */
 function generateCircularSvg(
   qr: ReturnType<typeof QRCode>,
   moduleCount: number,
   sizePx: number
 ): string {
-  const radius = sizePx / 2;
-  const center = sizePx / 2;
-
-  // QR square side inscribed in circle: side = diameter / sqrt(2)
-  // Add padding for quiet zone
-  const qrSide = (sizePx / Math.SQRT2) * 0.88;
-  const cellSize = qrSide / moduleCount;
-  const qrOffset = (sizePx - qrSide) / 2;
-
-  const rects: string[] = [];
-  for (let row = 0; row < moduleCount; row++) {
-    for (let col = 0; col < moduleCount; col++) {
-      if (qr.isDark(row, col)) {
-        const x = (qrOffset + col * cellSize).toFixed(2);
-        const y = (qrOffset + row * cellSize).toFixed(2);
-        const w = cellSize.toFixed(2);
-        rects.push(
-          `<rect x="${x}" y="${y}" width="${w}" height="${w}" fill="black"/>`
-        );
-      }
-    }
-  }
-
+  const inner = generateCircularSvgInner(qr, moduleCount, sizePx, 0, 0);
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${sizePx}" height="${sizePx}" viewBox="0 0 ${sizePx} ${sizePx}">`,
-    `  <circle cx="${center}" cy="${center}" r="${radius}" fill="white" stroke="black" stroke-width="1"/>`,
-    `  ${rects.join("\n  ")}`,
+    inner,
     `</svg>`,
   ].join("\n");
 }
@@ -358,15 +318,16 @@ function generateCircularSvgInner(
   offsetX: number,
   offsetY: number
 ): string {
-  const radius = sizePx / 2;
-  const centerX = offsetX + sizePx / 2;
-  const centerY = offsetY + sizePx / 2;
+  // center is sizePx / 2 — used for both the radius and center coords relative to offset
+  const center = sizePx / 2;
+  const centerX = offsetX + center;
+  const centerY = offsetY + center;
   const qrSide = (sizePx / Math.SQRT2) * 0.88;
   const cellSize = qrSide / moduleCount;
   const qrOriginX = offsetX + (sizePx - qrSide) / 2;
   const qrOriginY = offsetY + (sizePx - qrSide) / 2;
 
-  const bg = `    <circle cx="${centerX}" cy="${centerY}" r="${radius}" fill="white" stroke="black" stroke-width="0.5"/>`;
+  const bg = `    <circle cx="${centerX}" cy="${centerY}" r="${center}" fill="white" stroke="black" stroke-width="0.5"/>`;
   const qrPath = buildCompoundQrPath(
     qr,
     moduleCount,

@@ -27,13 +27,14 @@ describe("generateQrSvg", () => {
       expect(svg).toContain('viewBox="0 0 500 500"');
     });
 
-    it("contains rect elements for QR modules", () => {
+    it("contains a compound path element for QR modules", () => {
       const svg = generateQrSvg({
         data: testData,
         sizePx: 300,
         style: "square",
       });
-      expect(svg).toContain("<rect");
+      // Inner functions use a single compound <path> instead of individual <rect> elements
+      expect(svg).toContain("<path");
       expect(svg).toContain('fill="black"');
     });
 
@@ -124,13 +125,14 @@ describe("generateQrSvg", () => {
       expect(svg).toContain('cy="150"');
     });
 
-    it("contains rect elements for QR modules", () => {
+    it("contains a compound path element for QR modules", () => {
       const svg = generateQrSvg({
         data: testData,
         sizePx: 300,
         style: "circular",
       });
-      expect(svg).toContain("<rect");
+      // Inner functions use a single compound <path> instead of individual <rect> elements
+      expect(svg).toContain("<path");
       expect(svg).toContain('fill="black"');
     });
 
@@ -324,7 +326,8 @@ describe("generateQrSvg", () => {
         sizePx: 300,
         style: "square",
       });
-      expect(svg).toContain('stroke-width="1"');
+      // Inner functions use stroke-width="0.5" for compound-path stickers
+      expect(svg).toContain('stroke-width="0.5"');
     });
 
     it("circular style circle has stroke width", () => {
@@ -333,7 +336,8 @@ describe("generateQrSvg", () => {
         sizePx: 300,
         style: "circular",
       });
-      expect(svg).toContain('stroke-width="1"');
+      // Inner functions use stroke-width="0.5" for compound-path stickers
+      expect(svg).toContain('stroke-width="0.5"');
     });
   });
 
