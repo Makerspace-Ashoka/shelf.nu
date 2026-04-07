@@ -62,3 +62,26 @@ apps/docs/.vitepress/dist
 lefthook-local.yml
 .worktrees/
 node-compile-cache/
+
+# Database backups and dumps
+*.sql
+!**/migrations/**/*.sql
+
+# Generated QR code artifacts
+qr-*.svg
+
+# AI editor/agent config (local tooling)
+.cursorrules
+.windsurfrules
+.opencode.json
+.mcp.json
+AGENTS.md
+GEMINI.md
+.claude/skills/
+
+# Internal planning docs
+docs/superpowers/
+
+# Migration and utility scripts (local only)
+scripts/migrate-*.ts
+scripts/generate-*.ts
