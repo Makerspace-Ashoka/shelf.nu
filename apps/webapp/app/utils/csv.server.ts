@@ -43,6 +43,7 @@ import {
 } from "~/modules/booking/service.server";
 import type { BookingWithCustodians } from "~/modules/booking/types";
 import { getPrimaryCustody } from "~/modules/custody/utils";
+import { getQrBaseUrl } from "~/modules/qr/utils.server";
 import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
 import { checkExhaustiveSwitch } from "./check-exhaustive-switch";
 import { getDateTimeFormat } from "./client-hints";
@@ -400,6 +401,9 @@ export const buildCsvExportDataFromAssets = ({
             break;
           case "qrId":
             value = asset.qrId;
+            break;
+          case "qrUrl":
+            value = asset.qrId ? `${getQrBaseUrl()}/${asset.qrId}` : "";
             break;
           case "name":
             value = asset.title;
