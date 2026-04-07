@@ -20,6 +20,8 @@ import { useZorm } from "react-zorm";
 import { z } from "zod";
 import { updateDynamicTitleAtom } from "~/atoms/dynamic-title-atom";
 import { fileErrorAtom, assetImageValidateFileAtom } from "~/atoms/file";
+import { HierarchicalCategorySelect } from "~/components/category/hierarchical-category-select";
+import { HierarchicalLocationSelect } from "~/components/location/hierarchical-location-select";
 import type {
   AssetEditLoaderData,
   loader,
@@ -41,7 +43,6 @@ import BarcodesInput, { type BarcodesInputRef } from "../forms/barcodes-input";
 import FormRow from "../forms/form-row";
 import Input from "../forms/input";
 import { RefererRedirectInput } from "../forms/referer-redirect-input";
-import ImageWithPreview from "../image-with-preview/image-with-preview";
 import InlineEntityCreationDialog from "../inline-entity-creation-dialog/inline-entity-creation-dialog";
 import { Button } from "../shared/button";
 import { ButtonGroup } from "../shared/button-group";
@@ -88,16 +89,28 @@ export const NewAssetFormSchema = z.object({
 
   // Tracking method & quantity fields
   type: z.nativeEnum(AssetType).default(AssetType.INDIVIDUAL),
-  quantity: z.coerce
-    .number({ invalid_type_error: "Quantity must be a number" })
-    .int("Quantity must be a whole number")
-    .positive("Quantity is required and must be at least 1")
-    .optional(),
-  minQuantity: z.coerce
-    .number({ invalid_type_error: "Min quantity must be a number" })
-    .int("Min quantity must be a whole number")
-    .nonnegative("Min quantity cannot be negative")
-    .optional(),
+  quantity: z
+    .string()
+    .optional()
+    .transform((val) => (val === "" || val === undefined ? undefined : +val))
+    .pipe(
+      z
+        .number({ invalid_type_error: "Quantity must be a number" })
+        .int("Quantity must be a whole number")
+        .positive("Quantity is required and must be at least 1")
+        .optional()
+    ),
+  minQuantity: z
+    .string()
+    .optional()
+    .transform((val) => (val === "" || val === undefined ? undefined : +val))
+    .pipe(
+      z
+        .number({ invalid_type_error: "Min quantity must be a number" })
+        .int("Min quantity must be a whole number")
+        .nonnegative("Min quantity cannot be negative")
+        .optional()
+    ),
   consumptionType: z
     .nativeEnum(ConsumptionType, {
       errorMap: () => ({ message: "Please select a consumption type" }),
@@ -231,9 +244,20 @@ export const AssetForm = ({
   const [, validateFile] = useAtom(assetImageValidateFileAtom);
   const [, updateDynamicTitle] = useAtom(updateDynamicTitleAtom);
 
-  const { currency, asset } = useLoaderData<AssetEditLoaderData>();
+  const loaderData = useLoaderData<AssetEditLoaderData>();
+  const { currency, asset } = loaderData;
   const isKitAsset = Boolean(asset?.kit);
   const locationDisabled = disabled || isKitAsset;
+
+  /** Look up the selected category's name/color from loader data. */
+  const selectedCategory = (loaderData as any)?.categories?.find?.(
+    (c: { id: string }) => c.id === categoryId
+  ) as { id: string; name: string; color: string } | undefined;
+
+  /** Look up the selected location's name from loader data. */
+  const selectedLocation = (loaderData as any)?.locations?.find?.(
+    (l: { id: string }) => l.id === locationId
+  ) as { id: string; name: string } | undefined;
 
   /** Whether we are in edit mode (asset already exists). */
   const isEditMode = Boolean(id);
@@ -656,37 +680,28 @@ export const AssetForm = ({
           }
           className="border-b-0 pb-[10px]"
         >
-          <DynamicSelect
+          <HierarchicalCategorySelect
             disabled={disabled}
             defaultValue={
               new URLSearchParams(location.search).get("category") ||
               categoryId ||
               undefined
             }
-            model={{ name: "category", queryKey: "name" }}
-            triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
-            contentLabel="Categories"
-            label="Category"
-            hideLabel
-            initialDataKey="categories"
-            countKey="totalCategories"
-            closeOnSelect
-            selectionMode="set"
-            allowClear={true}
-            extraContent={({ onItemCreated, closePopover }) => (
+            defaultValueName={selectedCategory?.name}
+            defaultValueColor={selectedCategory?.color}
+            extraContent={({ closePopover, selectItem }) => (
               <InlineEntityCreationDialog
                 title="Create new category"
                 type="category"
                 buttonLabel="Create new category"
                 onCreated={(created) => {
                   if (created?.type !== "category") return;
-                  const category = created.entity;
-                  onItemCreated({
-                    id: category.id,
-                    name: category.name,
-                    color: category.color,
-                    metadata: { ...category },
-                  });
+                  const cat = created.entity as {
+                    id: string;
+                    name: string;
+                    color: string;
+                  };
+                  selectItem(cat.id, cat.name, cat.color);
                   closePopover();
                 }}
               />
@@ -771,48 +786,26 @@ export const AssetForm = ({
               </HoverCardContent>
             </HoverCard>
           ) : (
-            <DynamicSelect
+            <HierarchicalLocationSelect
               disabled={disabled}
-              selectionMode="set"
-              fieldName="newLocationId"
-              triggerWrapperClassName="flex flex-col !gap-0 justify-start items-start [&_.inner-label]:w-full [&_.inner-label]:text-left "
               defaultValue={locationId || undefined}
-              model={{ name: "location", queryKey: "name" }}
-              contentLabel="Locations"
-              label="Location"
-              hideLabel
-              initialDataKey="locations"
-              countKey="totalLocations"
-              closeOnSelect
-              allowClear
-              extraContent={({ onItemCreated, closePopover }) => (
+              defaultValueName={selectedLocation?.name}
+              fieldName="newLocationId"
+              extraContent={({ closePopover, selectItem }) => (
                 <InlineEntityCreationDialog
                   type="location"
                   title="Create new location"
                   buttonLabel="Create new location"
                   onCreated={(created) => {
                     if (created?.type !== "location") return;
-                    const location = created.entity;
-                    onItemCreated({
-                      id: location.id,
-                      name: location.name,
-                      metadata: { ...location },
-                    });
+                    const loc = created.entity as {
+                      id: string;
+                      name: string;
+                    };
+                    selectItem(loc.id, loc.name);
                     closePopover();
                   }}
                 />
-              )}
-              renderItem={({ name, metadata }) => (
-                <div className="flex items-center gap-2">
-                  {metadata?.thumbnailUrl ? (
-                    <ImageWithPreview
-                      thumbnailUrl={metadata.thumbnailUrl}
-                      alt={metadata.name}
-                      className="size-6 rounded-[2px]"
-                    />
-                  ) : null}
-                  <div>{name}</div>
-                </div>
               )}
             />
           )}

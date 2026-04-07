@@ -180,6 +180,44 @@ export async function getCategorySubtreeDepth(params: {
   return result?.maxDepth ?? 0;
 }
 
+/**
+ * Fetches categories at a given hierarchy level with child indicator.
+ * Used by the hierarchical category selector to show one level at a time.
+ *
+ * @param params.organizationId - Organization scope.
+ * @param params.parentId - Parent category ID, or null for root-level categories.
+ * @param params.search - Optional search filter on category name.
+ * @returns Array of categories with hasChildren flag.
+ */
+export async function getCategoriesByParentId(params: {
+  organizationId: Organization["id"];
+  parentId: string | null;
+  search?: string;
+}) {
+  const { organizationId, parentId, search } = params;
+
+  const where: Prisma.CategoryWhereInput = {
+    organizationId,
+    parentId,
+    ...(search && {
+      name: { contains: search, mode: "insensitive" as const },
+    }),
+  };
+
+  const categories = await db.category.findMany({
+    where,
+    include: { _count: { select: { children: true } } },
+    orderBy: { name: "asc" },
+  });
+
+  return categories.map((c) => ({
+    id: c.id,
+    name: c.name,
+    color: c.color,
+    hasChildren: c._count.children > 0,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Hierarchy validation (private)
 // ---------------------------------------------------------------------------

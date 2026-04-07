@@ -2,25 +2,28 @@
   "env": {
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
   },
+  "enabledMcpjsonServers": ["supabase-local"],
   "hooks": {
-    "Stop": [
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "code-review-graph update --quiet",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
       {
         "matcher": "",
         "hooks": [
           {
             "type": "command",
-            "command": "afplay ~/Documents/jobs_done.aiff"
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx prettier --write \"$FILE_PATH\""
+            "command": "code-review-graph status --json",
+            "timeout": 3000
           }
         ]
       }

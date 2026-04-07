@@ -8,6 +8,8 @@ import { BarcodeDisplay } from "~/components/barcode/barcode-display";
 import { Button } from "~/components/shared/button";
 import { useCurrentOrganization } from "~/hooks/use-current-organization";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
+import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
+import { QR_SIZE_PRESETS, resolveQrSizePx } from "~/modules/qr/types";
 import { resolveShowShelfBranding } from "~/utils/branding";
 import { useBarcodePermissions } from "~/utils/permissions/use-barcode-permissions";
 import { slugify } from "~/utils/slugify";
@@ -17,6 +19,7 @@ import { AddBarcodeDialog } from "./add-barcode-dialog";
 import { Ean13LookupLink } from "../barcode/barcode-card";
 import { UnlockBarcodesModal } from "../barcode/unlock-barcodes-banner";
 import { CrispButton } from "../marketing/crisp";
+import { QrStyleToggle } from "../qr/qr-style-toggle";
 import When from "../when/when";
 
 type SizeKeys = "cable" | "small" | "medium" | "large";
@@ -88,6 +91,12 @@ export const CodePreview = ({
     organization?.showShelfBranding
   );
   const [isAddBarcodeDialogOpen, setIsAddBarcodeDialogOpen] = useState(false);
+
+  const [qrStyle, setQrStyle] = useState<QrStyle>("square");
+  const [qrSizePreset, setQrSizePreset] = useState<QrSizePreset>("medium");
+  const [customSizeMm, setCustomSizeMm] = useState<number>(50);
+
+  const resolvedSizePx = resolveQrSizePx(qrSizePreset, customSizeMm);
 
   // Build available codes list
   const availableCodes: CodeType[] = useMemo(() => {
@@ -314,6 +323,51 @@ export const CodePreview = ({
         </div>
       </div>
 
+      {/* Style & Size options (QR only) */}
+      {selectedCode?.type === "qr" ? (
+        <div className="border-b border-[#E3E4E8] px-4 py-3">
+          <div className="flex items-center gap-4">
+            {/* Style toggle */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Style</span>
+              <QrStyleToggle value={qrStyle} onChange={setQrStyle} size="sm" />
+            </div>
+
+            {/* Size selector */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-500">Size</span>
+              <select
+                value={qrSizePreset}
+                onChange={(e) =>
+                  setQrSizePreset(e.target.value as QrSizePreset)
+                }
+                className="rounded border border-gray-200 px-2 py-1 text-xs text-gray-700"
+              >
+                {Object.entries(QR_SIZE_PRESETS).map(([key, val]) => (
+                  <option key={key} value={key}>
+                    {val.label}
+                  </option>
+                ))}
+                <option value="custom">Custom</option>
+              </select>
+              {qrSizePreset === "custom" ? (
+                <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={10}
+                    max={200}
+                    value={customSizeMm}
+                    onChange={(e) => setCustomSizeMm(Number(e.target.value))}
+                    className="w-16 rounded border border-gray-200 px-2 py-1 text-xs"
+                  />
+                  <span className="text-xs text-gray-500">mm</span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Code Preview */}
       <div className="flex w-full justify-center pt-6">
         {selectedCode?.type === "qr" ? (
@@ -324,6 +378,8 @@ export const CodePreview = ({
             qrIdDisplayPreference={organization?.qrIdDisplayPreference}
             sequentialId={sequentialId}
             showShelfBranding={resolvedShowShelfBranding}
+            qrStyle={qrStyle}
+            sizePx={resolvedSizePx}
           />
         ) : selectedCode?.type === "barcode" ? (
           <BarcodeLabel
@@ -385,6 +441,10 @@ interface QrLabelProps {
   qrIdDisplayPreference?: string;
   sequentialId?: string | null;
   showShelfBranding?: boolean;
+  /** Frame style: square (default) or circular. */
+  qrStyle?: QrStyle;
+  /** Output size in pixels. Defaults to 300. */
+  sizePx?: number;
 }
 
 export const QrLabel = React.forwardRef<HTMLDivElement, QrLabelProps>(
@@ -395,21 +455,24 @@ export const QrLabel = React.forwardRef<HTMLDivElement, QrLabelProps>(
       qrIdDisplayPreference,
       sequentialId,
       showShelfBranding = true,
+      qrStyle = "square",
+      sizePx = 300,
     } = props ?? {};
     return (
       <div
         style={{
-          width: "300px",
+          width: `${sizePx}px`,
           aspectRatio: 1 / 1,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           flexDirection: "column",
           gap: "12px",
-          borderRadius: "4px",
+          borderRadius: qrStyle === "circular" ? "50%" : "4px",
           border: "5px solid #E3E4E8",
           padding: "24px 17px 24px 17px",
           backgroundColor: "white",
+          overflow: "hidden",
         }}
         ref={ref}
       >

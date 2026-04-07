@@ -7,12 +7,15 @@ import { useLoaderData } from "react-router";
 import { selectedBulkItemsAtom } from "~/atoms/list";
 import { useSearchParams } from "~/hooks/search-params";
 import useApiQuery from "~/hooks/use-api-query";
+import type { QrSizePreset, QrStyle } from "~/modules/qr/types";
+import { QR_SIZE_PRESETS, resolveQrSizePx } from "~/modules/qr/types";
 import type { BulkQrDownloadLoaderData } from "~/routes/api+/assets.get-assets-for-bulk-qr-download";
 import { generateHtmlFromComponent } from "~/utils/component-to-html";
 import { isSelectingAllItems } from "~/utils/list";
 import { sanitizeFilename } from "~/utils/misc";
 import { QrLabel } from "../code-preview/code-preview";
 import { Dialog, DialogPortal } from "../layout/dialog";
+import { QrStyleToggle } from "../qr/qr-style-toggle";
 import { Button } from "../shared/button";
 import { Spinner } from "../shared/spinner";
 import When from "../when/when";
@@ -40,6 +43,11 @@ export default function BulkDownloadQrDialog({
     status: "idle",
   });
   const [shouldFetchAssets, setShouldFetchAssets] = useState(false);
+  const [qrStyle, setQrStyle] = useState<QrStyle>("square");
+  const [qrSizePreset, setQrSizePreset] = useState<QrSizePreset>("medium");
+  const [customSizeMm, setCustomSizeMm] = useState<number>(50);
+
+  const resolvedSizePx = resolveQrSizePx(qrSizePreset, customSizeMm);
   const [searchParams] = useSearchParams();
 
   const selectedAssets = useAtomValue(selectedBulkItemsAtom);
@@ -93,13 +101,15 @@ export default function BulkDownloadQrDialog({
             qrIdDisplayPreference={qrIdDisplayPreference}
             sequentialId={asset.sequentialId}
             showShelfBranding={showShelfBranding}
+            qrStyle={qrStyle}
+            sizePx={resolvedSizePx}
           />
         )
       );
 
       const toBlobOptions = {
-        width: 300,
-        height: 300,
+        width: resolvedSizePx,
+        height: resolvedSizePx,
         backgroundColor: "white",
         style: {
           display: "flex",
@@ -164,7 +174,7 @@ export default function BulkDownloadQrDialog({
         error: error instanceof Error ? error.message : "Something went wrong.",
       });
     }
-  }, [apiResponse]);
+  }, [apiResponse, qrStyle, resolvedSizePx]);
 
   // Trigger download when API response is ready
   useEffect(() => {
@@ -241,6 +251,55 @@ export default function BulkDownloadQrDialog({
               {downloadState.status === "error" ? (
                 <p className="mb-4 text-error-500">{downloadState.error}</p>
               ) : null}
+
+              {/* Style & Size options */}
+              <div className="mb-4 border-b border-gray-200 pb-4">
+                <div className="flex flex-wrap items-center gap-4">
+                  {/* Style toggle */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Style
+                    </span>
+                    <QrStyleToggle value={qrStyle} onChange={setQrStyle} />
+                  </div>
+
+                  {/* Size selector */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium text-gray-700">
+                      Size
+                    </span>
+                    <select
+                      value={qrSizePreset}
+                      onChange={(e) =>
+                        setQrSizePreset(e.target.value as QrSizePreset)
+                      }
+                      className="rounded border border-gray-200 px-2 py-1.5 text-sm text-gray-700"
+                    >
+                      {Object.entries(QR_SIZE_PRESETS).map(([key, val]) => (
+                        <option key={key} value={key}>
+                          {val.label}
+                        </option>
+                      ))}
+                      <option value="custom">Custom</option>
+                    </select>
+                    {qrSizePreset === "custom" ? (
+                      <div className="flex items-center gap-1">
+                        <input
+                          type="number"
+                          min={10}
+                          max={200}
+                          value={customSizeMm}
+                          onChange={(e) =>
+                            setCustomSizeMm(Number(e.target.value))
+                          }
+                          className="w-16 rounded border border-gray-200 px-2 py-1.5 text-sm"
+                        />
+                        <span className="text-sm text-gray-500">mm</span>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              </div>
 
               <div className="flex w-full items-center justify-center gap-4">
                 <Button

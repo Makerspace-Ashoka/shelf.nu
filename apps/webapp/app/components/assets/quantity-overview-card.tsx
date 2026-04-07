@@ -6,8 +6,8 @@
  * units in custody, unit of measure, optional low-stock alert threshold,
  * and the consumption behavior mode.
  *
- * Phase 1: "Available" mirrors total quantity and "In custody" is hardcoded to 0.
- * Phase 2 will compute these from actual booking/checkout data.
+ * Availability and in-custody values are computed by the loader from actual
+ * custody records and passed as props. Falls back to total/0 if not provided.
  *
  * @see {@link file://./../../routes/_layout+/assets.$assetId.overview.tsx} - Asset overview page
  * @see {@link file://./asset-custody-card.tsx} - Similar sidebar card pattern
@@ -15,13 +15,23 @@
 
 import type React from "react";
 import type { ConsumptionType, UnitOfMeasure } from "@prisma/client";
-import { Badge } from "~/components/shared/badge";
+import { TriangleAlertIcon } from "lucide-react";
+import { Button } from "~/components/shared/button";
 import { Card } from "~/components/shared/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "~/components/shared/tooltip";
 import { tw } from "~/utils/tw";
 import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
+import { QuickAdjustDialog } from "./quick-adjust-dialog";
 
 /** Props for the QuantityOverviewCard component */
 export interface QuantityOverviewCardProps {
+  /** The asset's unique ID, used by the quick-adjust dialog */
+  assetId: string;
   /** Total quantity of the asset */
   quantity: number | null;
   /** Unit of measure enum value */
@@ -30,6 +40,12 @@ export interface QuantityOverviewCardProps {
   minQuantity: number | null;
   /** Consumption behavior: ONE_WAY (used up) or TWO_WAY (returnable) */
   consumptionType: ConsumptionType | null;
+  /** Computed available quantity (total - inCustody), provided by the loader */
+  availableQuantity?: number;
+  /** Computed quantity currently in custody, provided by the loader */
+  inCustodyQuantity?: number;
+  /** Whether the user has permission to adjust quantity */
+  canUpdate?: boolean;
   /** Optional additional CSS class names */
   className?: string;
 }
@@ -50,18 +66,38 @@ function formatWithUnit(value: number, unit: string | null): string {
  *
  * @param props.label - Row label displayed on the left
  * @param props.value - Row value displayed on the right
+ * @param props.warning - When true, renders the value in amber with a warning icon
  */
 function OverviewRow({
   label,
   value,
+  warning,
 }: {
   label: string;
   value: React.ReactNode;
+  warning?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 last:border-b-0">
       <span className="text-[14px] text-gray-600">{label}</span>
-      <span className="text-[14px] font-medium text-gray-900">{value}</span>
+      <span className="flex items-center gap-1.5 text-[14px] font-medium text-gray-900">
+        {warning ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TriangleAlertIcon className="size-4 text-amber-500" />
+              </TooltipTrigger>
+              <TooltipContent side="left">
+                <p className="text-xs">
+                  Low stock — an email alert has been sent to the workspace
+                  owner.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : null}
+        {value}
+      </span>
     </div>
   );
 }
@@ -77,22 +113,25 @@ function OverviewRow({
  * @returns Card element, or null if quantity data is missing
  */
 export function QuantityOverviewCard({
+  assetId,
   quantity,
   unitOfMeasure,
   minQuantity,
   consumptionType,
+  availableQuantity,
+  inCustodyQuantity,
+  canUpdate = false,
   className,
 }: QuantityOverviewCardProps) {
   const qty = quantity ?? 0;
   const unit = unitOfMeasure ? unitOfMeasureLabel(unitOfMeasure) : null;
 
-  /** Low stock when a threshold is set and current quantity is at or below it */
-  const isLowStock =
-    minQuantity != null && quantity != null && quantity <= minQuantity;
+  /** Use computed values from the loader, falling back to phase-1 defaults */
+  const available = availableQuantity ?? qty;
+  const inCustody = inCustodyQuantity ?? 0;
 
-  /** Phase 1: available mirrors total; in-custody is hardcoded to 0 */
-  const available = qty;
-  const inCustody = 0;
+  /** Low stock when a threshold is set and available quantity is at or below it */
+  const isLowStock = minQuantity != null && available <= minQuantity;
 
   /** Human-readable behavior label */
   const behaviorLabel =
@@ -106,24 +145,30 @@ export function QuantityOverviewCard({
     <Card className={tw("my-3 p-0", className)}>
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <h3 className="text-[14px] font-semibold text-gray-900">
-            Quantity Overview
-          </h3>
-          {isLowStock ? (
-            <Badge color="#f59e0b" withDot={false}>
-              Low Stock
-            </Badge>
-          ) : null}
-        </div>
-        <span className="text-[14px] font-medium text-gray-700">
-          {formatWithUnit(qty, unit)}
-        </span>
+        <h3 className="text-[14px] font-semibold text-gray-900">
+          Quantity Overview
+        </h3>
+        {canUpdate ? (
+          <QuickAdjustDialog
+            assetId={assetId}
+            unitOfMeasure={unitOfMeasure}
+            availableQuantity={available}
+            trigger={
+              <Button type="button" variant="secondary" size="sm">
+                Adjust
+              </Button>
+            }
+          />
+        ) : null}
       </div>
 
       {/* Detail rows */}
       <OverviewRow label="Total quantity" value={formatWithUnit(qty, unit)} />
-      <OverviewRow label="Available" value={formatWithUnit(available, unit)} />
+      <OverviewRow
+        label="Available"
+        value={formatWithUnit(available, unit)}
+        warning={isLowStock}
+      />
       <OverviewRow label="In custody" value={formatWithUnit(inCustody, unit)} />
       <OverviewRow label="Unit of measure" value={unit ?? "—"} />
       {minQuantity != null ? (
