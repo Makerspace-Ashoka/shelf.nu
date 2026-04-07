@@ -42,6 +42,7 @@ import {
   getBookingsFilterData,
 } from "~/modules/booking/service.server";
 import type { BookingWithCustodians } from "~/modules/booking/types";
+import { getPrimaryCustody } from "~/modules/custody/utils";
 import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
 import { checkExhaustiveSwitch } from "./check-exhaustive-switch";
 import { getDateTimeFormat } from "./client-hints";
@@ -329,13 +330,10 @@ export async function exportAssetsFromIndexToCsv({
     assetIds: takeAll ? undefined : ids,
     canUseBarcodes: currentOrganization.barcodesEnabled ?? false,
   });
-  // Pass both assets and columns to the build function
   const csvData = buildCsvExportDataFromAssets({
     assets,
-    columns: [
-      { name: "name", visible: true, position: 0 },
-      ...(settings.columns as Column[]),
-    ],
+    // "name" is always present in column settings (included by default in schema generation)
+    columns: settings.columns as Column[],
     currentOrganization,
     request,
   });
@@ -418,11 +416,13 @@ export const buildCsvExportDataFromAssets = ({
           case "kit":
             value = asset.kit?.name;
             break;
-          case "custody":
-            value = asset.custody
-              ? resolveTeamMemberName(asset.custody.custodian)
+          case "custody": {
+            const primaryCustody = getPrimaryCustody(asset.custody);
+            value = primaryCustody
+              ? resolveTeamMemberName(primaryCustody.custodian)
               : "";
             break;
+          }
           case "tags":
             value = asset.tags?.map((t) => t.name).join(", ") ?? "";
             break;
@@ -507,10 +507,7 @@ export const buildCsvExportDataFromAssets = ({
                 : "Individual";
             break;
           case "assetModel":
-            value =
-              (asset as Record<string, any>).assetModelName ??
-              (asset as Record<string, any>).assetModel?.name ??
-              "";
+            value = asset.assetModelName ?? "";
             break;
           case "actions":
             value = "";

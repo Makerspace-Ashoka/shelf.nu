@@ -46,6 +46,7 @@ import type {
   ColumnLabelKey,
   BarcodeField,
 } from "~/modules/asset-index-settings/helpers";
+import { getPrimaryCustody } from "~/modules/custody/utils";
 import { type AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import { getStatusClasses, isOneDayEvent } from "~/utils/calendar";
 import { formatCurrency } from "~/utils/currency";
@@ -220,7 +221,7 @@ export function AdvancedIndexColumn({
       );
 
     case "status":
-      return <StatusColumn id={item.id} status={item.status} />;
+      return <StatusColumn id={item.id} status={item.status} asset={item} />;
 
     case "description":
       return <DescriptionColumn value={item.description ?? ""} />;
@@ -407,10 +408,23 @@ function TextColumn({
   );
 }
 
-function StatusColumn({ id, status }: { id: string; status: AssetStatus }) {
+function StatusColumn({
+  id,
+  status,
+  asset,
+}: {
+  id: string;
+  status: AssetStatus;
+  asset?: AdvancedIndexAsset;
+}) {
   return (
     <Td className="w-full max-w-none whitespace-nowrap">
-      <AssetStatusBadge id={id} status={status} availableToBook={true} />
+      <AssetStatusBadge
+        id={id}
+        status={status}
+        availableToBook={true}
+        asset={asset}
+      />
     </Td>
   );
 }
@@ -492,6 +506,7 @@ function CustodyColumn({
   custody: AdvancedIndexAsset["custody"];
 }) {
   const { roles } = useUserRoleHelper();
+  const primaryCustody = getPrimaryCustody(custody);
 
   return (
     <When
@@ -502,8 +517,8 @@ function CustodyColumn({
       })}
     >
       <Td>
-        {custody?.custodian ? (
-          <TeamMemberBadge teamMember={custody?.custodian} />
+        {primaryCustody?.custodian ? (
+          <TeamMemberBadge teamMember={primaryCustody.custodian} />
         ) : (
           <EmptyTableValue />
         )}

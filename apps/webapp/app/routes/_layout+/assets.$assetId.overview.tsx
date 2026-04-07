@@ -1,5 +1,10 @@
 import type { RenderableTreeNode } from "@markdoc/markdoc";
-import { AssetStatus, AssetType, CustomFieldType } from "@prisma/client";
+import {
+  AssetStatus,
+  AssetType,
+  CustomFieldType,
+  OrganizationRoles,
+} from "@prisma/client";
 import type {
   MetaFunction,
   ActionFunctionArgs,
@@ -10,6 +15,7 @@ import { useZorm } from "react-zorm";
 import { z } from "zod";
 import { CustodyCard } from "~/components/assets/asset-custody-card";
 import { AssetReminderCards } from "~/components/assets/asset-reminder-cards";
+import { QuantityCustodyList } from "~/components/assets/quantity-custody-list";
 import { QuantityOverviewCard } from "~/components/assets/quantity-overview-card";
 import { BarcodeCard } from "~/components/barcode/barcode-card";
 import { UnlockBarcodesBanner } from "~/components/barcode/unlock-barcodes-banner";
@@ -29,6 +35,7 @@ import { InfoTooltip } from "~/components/shared/info-tooltip";
 import { Tag } from "~/components/shared/tag";
 import TextualDivider from "~/components/shared/textual-divider";
 import When from "~/components/when/when";
+import { db } from "~/database/db.server";
 import { usePosition } from "~/hooks/use-position";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import { getAssetOverviewFields } from "~/modules/asset/fields";
@@ -39,9 +46,11 @@ import {
 import type { ShelfAssetCustomFieldValueType } from "~/modules/asset/types";
 import { getRemindersForOverviewPage } from "~/modules/asset-reminder/service.server";
 
+import { getPrimaryCustody } from "~/modules/custody/utils";
 import { generateQrObj } from "~/modules/qr/utils.server";
 import { getScanByQrId } from "~/modules/scan/service.server";
 import { parseScanData } from "~/modules/scan/utils.server";
+import { getTeamMembersForQuantityCustody } from "~/modules/team-member/service.server";
 import { appendToMetaTitle } from "~/utils/append-to-meta-title";
 import { checkExhaustiveSwitch } from "~/utils/check-exhaustive-switch";
 import { getClientHint } from "~/utils/client-hints";
@@ -97,6 +106,7 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       userOrganizations,
       currentOrganization,
       canUseBarcodes,
+      role,
     } = await requirePermission({
       userId,
       request,
@@ -135,6 +145,44 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       assetId: id,
       organizationId,
     });
+    /**
+     * Compute quantity availability for QUANTITY_TRACKED assets.
+     * Sums all custody records to determine how many units are currently
+     * checked out, then derives available = total - inCustody.
+     */
+    let quantityData: {
+      total: number;
+      inCustody: number;
+      available: number;
+    } | null = null;
+
+    if (asset.type === AssetType.QUANTITY_TRACKED) {
+      const custodySum = await db.custody.aggregate({
+        where: { assetId: asset.id },
+        _sum: { quantity: true },
+      });
+      const inCustody = custodySum._sum.quantity ?? 0;
+      quantityData = {
+        total: asset.quantity ?? 0,
+        inCustody,
+        available: (asset.quantity ?? 0) - inCustody,
+      };
+    }
+
+    /**
+     * For QUANTITY_TRACKED assets, fetch team members for the custody
+     * dialog. Self-service users are scoped to only their own record.
+     */
+    const { teamMembers, totalTeamMembers } =
+      asset.type === AssetType.QUANTITY_TRACKED
+        ? await getTeamMembersForQuantityCustody({
+            organizationId,
+            request,
+            userId,
+            isSelfService: role === OrganizationRoles.SELF_SERVICE,
+          })
+        : { teamMembers: [], totalTeamMembers: 0 };
+
     const booking = asset.bookings.length > 0 ? asset.bookings[0] : undefined;
     const currentBooking: any = null;
 
@@ -169,6 +217,9 @@ export async function loader({ context, request, params }: LoaderFunctionArgs) {
       timeZone,
       qrObj,
       reminders,
+      quantityData,
+      teamMembers,
+      totalTeamMembers,
     });
   } catch (cause) {
     const reason = makeShelfError(cause);
@@ -243,7 +294,9 @@ export default function AssetOverview() {
     lastScan,
     currentOrganization,
     userId,
+    quantityData,
   } = useLoaderData<typeof loader>();
+
   const booking =
     asset.status === AssetStatus.CHECKED_OUT && asset?.bookings?.length
       ? asset?.bookings[0]
@@ -414,7 +467,7 @@ export default function AssetOverview() {
                     {userHasPermission({
                       roles,
                       entity: PermissionEntity.assetModel,
-                      action: PermissionAction.read,
+                      action: PermissionAction.update,
                     }) ? (
                       <Button
                         to={`/settings/asset-models/${asset.assetModel.id}/edit`}
@@ -642,23 +695,39 @@ export default function AssetOverview() {
             </Card>
           ) : null}
 
-          <CustodyCard
-            booking={booking}
-            custody={asset?.custody || null}
-            hasPermission={userCanViewSpecificCustody({
-              roles,
-              custodianUserId: asset?.custody?.custodian?.user?.id,
-              organization: currentOrganization,
-              currentUserId: userId,
-            })}
-          />
+          {asset?.type !== AssetType.QUANTITY_TRACKED ? (
+            <CustodyCard
+              booking={booking}
+              custody={asset?.custody || null}
+              hasPermission={userCanViewSpecificCustody({
+                roles,
+                custodianUserId: getPrimaryCustody(asset?.custody)?.custodian
+                  ?.user?.id,
+                organization: currentOrganization,
+                currentUserId: userId,
+              })}
+            />
+          ) : null}
 
           {asset?.type === AssetType.QUANTITY_TRACKED ? (
             <QuantityOverviewCard
+              assetId={asset.id}
               quantity={asset.quantity ?? null}
               unitOfMeasure={asset.unitOfMeasure ?? null}
               minQuantity={asset.minQuantity ?? null}
               consumptionType={asset.consumptionType ?? null}
+              availableQuantity={quantityData?.available}
+              inCustodyQuantity={quantityData?.inCustody}
+              canUpdate={canUpdateAvailability}
+            />
+          ) : null}
+
+          {asset?.type === AssetType.QUANTITY_TRACKED ? (
+            <QuantityCustodyList
+              custody={asset.custody}
+              assetId={asset.id}
+              unitOfMeasure={asset.unitOfMeasure}
+              availableQuantity={quantityData?.available}
             />
           ) : null}
 

@@ -28,6 +28,7 @@ import { useIsUserAssetsPage } from "~/hooks/use-is-user-assets-page";
 import { useViewportHeight } from "~/hooks/use-viewport-height";
 import { useUserRoleHelper } from "~/hooks/user-user-role-helper";
 import type { AssetsFromViewItem } from "~/modules/asset/types";
+import { getPrimaryCustody } from "~/modules/custody/utils";
 import type { AssetIndexLoaderData } from "~/routes/_layout+/assets._index";
 import { tw } from "~/utils/tw";
 import { unitOfMeasureLabel } from "~/utils/unit-of-measure";
@@ -170,6 +171,7 @@ export const AssetsList = ({
                           availableToBook={
                             resource.extendedProps?.availableToBook
                           }
+                          asset={resource.extendedProps}
                         />
                         <CategoryBadge
                           category={resource.extendedProps?.category}
@@ -212,7 +214,8 @@ export const ListAssetContent = ({
   bulkActions?: ReactNode;
   isUserPage?: boolean;
 }) => {
-  const { category, tags, custody, location, kit } = item;
+  const { category, tags, custody: custodyArray, location, kit } = item;
+  const custody = getPrimaryCustody(custodyArray);
   return (
     <>
       {/* Item */}
@@ -268,6 +271,7 @@ export const ListAssetContent = ({
                   id={item.id}
                   status={item.status}
                   availableToBook={item.availableToBook}
+                  asset={item}
                 />
               </div>
             </div>
